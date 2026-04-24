@@ -257,3 +257,33 @@ dr-test: ## Run quarterly DR test procedure (RDS failover → health check → A
 	@echo "--- ASG rolling refresh ---"
 	./scripts/failover.sh --component asg-refresh
 	@echo "=== DR test complete. Log the result in docs/dr-test-log.txt ==="
+
+# ── Local development ────────────────────────────────────────
+local-up: ## Start stack for local testing (no cloudflared/CF credentials needed)
+	@echo "→ A gerar schema do Guacamole..."
+	@[[ -f $(COMPOSE_DIR)/guacamole/init/initdb.sql ]] || bash $(COMPOSE_DIR)/guacamole/init/init.sh
+	cd $(COMPOSE_DIR) && docker compose -f docker-compose.yml -f docker-compose.local.yml up -d
+	@echo ""
+	@echo "✓ Stack a arrancar. URLs locais:"
+	@echo "  Authentik:  http://localhost:9000   (admin / Admin1234!local)"
+	@echo "  Grafana:    http://localhost:3000   (admin / Admin1234!local)"
+	@echo "  Guacamole:  http://localhost:8080/guacamole  (guacadmin / guacadmin)"
+	@echo "  Prometheus: http://localhost:9090"
+	@echo ""
+	@echo "  make local-status  → ver estado dos containers"
+	@echo "  make local-logs    → ver logs em tempo real"
+
+local-down: ## Stop local test stack and remove containers
+	cd $(COMPOSE_DIR) && docker compose -f docker-compose.yml -f docker-compose.local.yml down
+
+local-clean: ## Stop stack and delete all volumes (reset to zero)
+	cd $(COMPOSE_DIR) && docker compose -f docker-compose.yml -f docker-compose.local.yml down -v
+
+local-status: ## Show container health for local stack
+	cd $(COMPOSE_DIR) && docker compose -f docker-compose.yml -f docker-compose.local.yml ps
+
+local-logs: ## Tail logs for local stack (Ctrl+C to stop)
+	cd $(COMPOSE_DIR) && docker compose -f docker-compose.yml -f docker-compose.local.yml logs -f --timestamps 2>&1 | grep -v healthcheck
+
+local-logs-%: ## Tail logs for a specific service: make local-logs-authentik-server
+	cd $(COMPOSE_DIR) && docker compose -f docker-compose.yml -f docker-compose.local.yml logs -f --timestamps $*

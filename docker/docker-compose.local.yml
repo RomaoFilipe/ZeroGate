@@ -1,0 +1,80 @@
+# ============================================================
+# ZeroGate Access — Local Development Override
+#
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.local.yml up -d
+#   # ou: make local-up
+#
+# O que este override faz:
+#   - Salta cloudflared (precisa de token real) e threat-watcher (precisa de CF API)
+#   - Expõe portas em 127.0.0.1 para acesso local
+#   - Desativa OIDC no Grafana e Guacamole (usa autenticação nativa)
+#   - Desativa cookies secure para HTTP local
+#   - Remove dependências do cloudflared para arrancar mais rápido
+#
+# Acessos após "make local-up":
+#   Authentik:  http://localhost:9000   (admin / Admin1234!local)
+#   Grafana:    http://localhost:3000   (admin / Admin1234!local)
+#   Guacamole:  http://localhost:8080/guacamole  (guacadmin / guacadmin)
+#   Prometheus: http://localhost:9090
+#   Loki:       http://localhost:3100
+# ============================================================
+
+services:
+
+  # ── Serviços desativados localmente ───────────────────────
+  # cloudflared precisa de credentials.json + tunnel token reais
+  cloudflared:
+    profiles: [local-skip]
+
+  # threat-watcher precisa de CF_API_TOKEN real
+  threat-watcher:
+    profiles: [local-skip]
+
+  # ── Authentik — expor porta local ─────────────────────────
+  authentik-server:
+    ports:
+      - "127.0.0.1:9000:9000"
+    environment:
+      AUTHENTIK_LOG_LEVEL: info
+
+  # ── Grafana — porta local, sem OIDC ───────────────────────
+  grafana:
+    ports:
+      - "127.0.0.1:3000:3000"
+    environment:
+      # Desativa OIDC — login direto com admin/password localmente
+      GF_AUTH_GENERIC_OAUTH_ENABLED: "false"
+      GF_AUTH_DISABLE_LOGIN_FORM: "false"
+      # Permite cookies em HTTP
+      GF_SECURITY_COOKIE_SECURE: "false"
+      GF_SMTP_FROM_ADDRESS: "alerts@example.com"
+      GF_SMTP_FROM_NAME: "ZeroGate Access"
+      GF_SMTP_ENABLED: "false"
+
+  # ── cAdvisor — skip no WSL2 (cgroups v1 não estão disponíveis) ──
+  cadvisor:
+    profiles: [local-skip]
+
+  # ── Guacamole — porta local, auth PostgreSQL (sem OIDC) ───
+  guacamole:
+    ports:
+      - "127.0.0.1:8080:8080"
+    environment:
+      # Usa só PostgreSQL auth — default guacadmin/guacadmin
+      EXTENSION_PRIORITY: postgresql
+      OPENID_AUTHORIZATION_ENDPOINT: ""
+      OPENID_JWKS_ENDPOINT: ""
+      OPENID_ISSUER: ""
+      OPENID_CLIENT_ID: ""
+      OPENID_REDIRECT_URI: ""
+
+  # ── Prometheus — porta local para debug ───────────────────
+  prometheus:
+    ports:
+      - "127.0.0.1:9090:9090"
+
+  # ── Loki — porta local para debug ─────────────────────────
+  loki:
+    ports:
+      - "127.0.0.1:3100:3100"

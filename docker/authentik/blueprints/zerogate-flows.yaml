@@ -1,17 +1,22 @@
 # ============================================================
 # Authentik Blueprint — ZeroGate flows & policies
 # Apply via: Admin UI → System → Blueprints → Import
-# Or: docker exec authentik-worker ak apply_blueprint /blueprints/zerogate-flows.yaml
+# Or: docker exec zerogate-authentik-worker-1 ak apply_blueprint /blueprints/zerogate-flows.yaml
 # ============================================================
 
 version: 1
 metadata:
   name: ZeroGate Core Flows
   labels:
-    blueprints.goauthentik.io/description: ZeroGate authentication flows with MFA enforcement
+    blueprints.goauthentik.io/description: ZeroGate authentication flows with mandatory MFA (TOTP + WebAuthn/Passkey)
 
 entries:
-  # ---- Password policy: min 14 chars, complexity required --
+
+  # ============================================================
+  # SECURITY POLICIES
+  # ============================================================
+
+  # Password policy: min 14 chars, complexity, HaveIBeenPwned
   - model: authentik_policies_password.PasswordPolicy
     state: present
     identifiers:
@@ -27,7 +32,7 @@ entries:
       check_have_i_been_pwned: true
       hibp_allowed_count: 0
 
-  # ---- Account lockout after 5 failed attempts ------------
+  # Account lockout after 5 failed attempts (reputation score -5)
   - model: authentik_policies_reputation.ReputationPolicy
     state: present
     identifiers:
@@ -38,17 +43,47 @@ entries:
       check_username: true
       threshold: -5
 
-  # ---- TOTP authenticator configuration ------------------
+  # ============================================================
+  # MFA STAGES — TOTP
+  # ============================================================
+
   - model: authentik_stages_authenticator_totp.AuthenticatorTOTPStage
     state: present
     identifiers:
       name: zerogate-totp-setup
     attrs:
       name: zerogate-totp-setup
-      friendly_name: "ZeroGate MFA"
+      friendly_name: "ZeroGate Authenticator (TOTP)"
       digits: 6
 
-  # ---- Authenticator validation (enforce MFA) -------------
+  # ============================================================
+  # MFA STAGES — WEBAUTHN / PASSKEY (v1.1)
+  # Supports hardware keys (YubiKey, etc.) and platform passkeys
+  # (Face ID, Touch ID, Windows Hello)
+  # ============================================================
+
+  - model: authentik_stages_authenticator_webauthn.AuthenticatorWebAuthnStage
+    state: present
+    identifiers:
+      name: zerogate-webauthn-setup
+    attrs:
+      name: zerogate-webauthn-setup
+      friendly_name: "ZeroGate Passkey / Security Key"
+      # cross-platform: hardware keys (YubiKey, etc.)
+      # platform: built-in authenticators (Face ID, Touch ID, Windows Hello)
+      # Leave empty to allow both (recommended)
+      authenticator_attachment: ""
+      # required: must use a resident/discoverable key (passkey behavior)
+      # preferred: allow both — best for broad device compatibility
+      resident_key_requirement: preferred
+      # required: authenticator must verify user identity (PIN, biometric)
+      user_verification: required
+
+  # ============================================================
+  # MFA VALIDATION — accepts TOTP or WebAuthn
+  # not_configured_action: configure — forces enrollment on first login
+  # ============================================================
+
   - model: authentik_stages_authenticator_validate.AuthenticatorValidateStage
     state: present
     identifiers:
@@ -58,10 +93,19 @@ entries:
       device_classes:
         - totp
         - webauthn
+      # Forces MFA enrollment if no device registered yet
       not_configured_action: configure
+      # Require user verification for WebAuthn (PIN or biometric)
       webauthn_user_verification: required
+      # Allow users to choose which MFA method to use
+      configuration_stages:
+        - !KeyOf zerogate-totp-setup
+        - !KeyOf zerogate-webauthn-setup
 
-  # ---- Default groups ------------------------------------
+  # ============================================================
+  # GROUPS
+  # ============================================================
+
   - model: authentik_core.Group
     state: present
     identifiers:
@@ -85,3 +129,28 @@ entries:
     attrs:
       name: remote-access
       is_superuser: false
+
+  # ============================================================
+  # NOTIFICATION TRANSPORT — email alerts on security events
+  # ============================================================
+
+  - model: authentik_events.NotificationTransport
+    state: present
+    identifiers:
+      name: zerogate-email-alert
+    attrs:
+      name: zerogate-email-alert
+      mode: email
+      send_once: false
+
+  # Notify admin on login from new IP / suspicious activity
+  - model: authentik_events.NotificationRule
+    state: present
+    identifiers:
+      name: zerogate-login-alert
+    attrs:
+      name: zerogate-login-alert
+      severity: warning
+      transports:
+        - !KeyOf zerogate-email-alert
+      group: !KeyOf grafana-admin

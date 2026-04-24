@@ -10,6 +10,10 @@ terraform {
       source  = "hashicorp/random"
       version = "~> 3.6"
     }
+    cloudflare = {
+      source  = "cloudflare/cloudflare"
+      version = "~> 4.0"
+    }
   }
 
   # Uncomment after creating the S3 bucket and DynamoDB table manually (one-time):
@@ -32,6 +36,10 @@ terraform {
   #   dynamodb_table = "zerogate-tfstate-lock"
   #   encrypt        = true
   # }
+}
+
+provider "cloudflare" {
+  api_token = var.cf_api_token
 }
 
 provider "aws" {

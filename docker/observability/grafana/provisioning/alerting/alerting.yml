@@ -125,6 +125,98 @@ groups:
         labels:
           severity: high
 
+      # ── v1.1 alert rules ──────────────────────────────────────
+
+      # Distributed brute force: many IPs failing (not just one)
+      - uid: distributed-attack
+        title: "Distributed Attack: >10 distinct IPs failing in 10 min"
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: loki
+            relativeTimeRange:
+              from: 600
+              to: 0
+            model:
+              expr: 'count(count by (detected_level) (count_over_time({service="authentik-server"} |= "login_failed" [10m])))'
+              instant: true
+              range: false
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              conditions:
+                - evaluator: { params: [10], type: gt }
+                  query: { params: [A] }
+        noDataState: OK
+        execErrState: Alerting
+        for: 0s
+        annotations:
+          summary: "Possible distributed brute force — multiple IPs failing"
+          description: "More than 10 distinct sources failing authentication in 10 minutes. Threat-watcher will auto-ban."
+        labels:
+          severity: critical
+
+      # WebAuthn enrollment drop: users removing MFA devices
+      - uid: webauthn-devices-removed
+        title: "MFA Device Removed"
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: loki
+            relativeTimeRange:
+              from: 3600
+              to: 0
+            model:
+              expr: 'sum(count_over_time({service="authentik-server"} |= "authenticator_webauthn" |= "delete" [1h]))'
+              instant: true
+              range: false
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              conditions:
+                - evaluator: { params: [0], type: gt }
+                  query: { params: [A] }
+        noDataState: OK
+        execErrState: Alerting
+        for: 0s
+        annotations:
+          summary: "A WebAuthn/Passkey device was removed from an account"
+          description: "Verify the change was intentional — this could indicate account compromise."
+        labels:
+          severity: high
+
+      # Threat-watcher banned an IP
+      - uid: ip-auto-banned
+        title: "Automated IP Ban Triggered"
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: loki
+            relativeTimeRange:
+              from: 600
+              to: 0
+            model:
+              expr: 'sum(count_over_time({service="threat-watcher"} |= "BANNING" [10m]))'
+              instant: true
+              range: false
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              conditions:
+                - evaluator: { params: [0], type: gt }
+                  query: { params: [A] }
+        noDataState: OK
+        execErrState: OK
+        for: 0s
+        annotations:
+          summary: "Threat-watcher auto-banned an IP"
+          description: "An IP exceeded the auth failure threshold and was blocked via Cloudflare API. Review threat-watcher logs."
+        labels:
+          severity: warning
+
       - uid: tunnel-unhealthy
         title: "Cloudflare Tunnel Disconnected"
         condition: C

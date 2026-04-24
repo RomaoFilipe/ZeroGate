@@ -21,3 +21,25 @@ enable_cloudtrail = true
 
 # EBS snapshot retention (days)
 backup_retention_days = 7
+
+# ── v1.1: Cloudflare Zero Trust ───────────────────────────────
+# Get from: Cloudflare dashboard → My Profile → API Tokens
+# Required permissions: Zone:Firewall Services:Edit, Account:Zero Trust:Edit
+cf_api_token = ""   # set via TF_VAR_cf_api_token env var — never commit this value
+
+# Get from: Cloudflare dashboard → your domain → Overview (right sidebar)
+cf_zone_id   = ""
+
+# Get from: Cloudflare dashboard → Overview (right sidebar)
+cf_account_id = ""
+
+# Geo-blocking — set true after filling zone/account IDs above
+enable_geo_blocking   = false
+enable_device_posture = false
+
+# Countries to block (ISO 3166-1 alpha-2)
+block_countries = ["RU", "CN", "KP", "IR", "BY", "SY"]
+
+# Allowed countries (used only when allowed_countries_only = true)
+allowed_countries      = ["PT", "GB", "DE", "FR", "NL", "ES", "US", "IE"]
+allowed_countries_only = false

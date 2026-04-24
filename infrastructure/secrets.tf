@@ -116,6 +116,49 @@ resource "aws_secretsmanager_secret_version" "cloudflare" {
   }
 }
 
+# ---- Cloudflare API token (v1.1) ----------------------------------
+# Stored in Secrets Manager so bootstrap.sh and threat-response.sh
+# can read it without embedding in any file.
+resource "aws_secretsmanager_secret" "cloudflare_api" {
+  count                   = var.cf_api_token != "" ? 1 : 0
+  name                    = "${local.name_prefix}/cloudflare-api"
+  description             = "ZeroGate Cloudflare API token (WAF + Zero Trust management)"
+  recovery_window_in_days = 7
+
+  tags = { Name = "${local.name_prefix}-secret-cloudflare-api" }
+}
+
+resource "aws_secretsmanager_secret_version" "cloudflare_api" {
+  count     = var.cf_api_token != "" ? 1 : 0
+  secret_id = aws_secretsmanager_secret.cloudflare_api[0].id
+
+  secret_string = jsonencode({
+    CF_API_TOKEN  = var.cf_api_token
+    CF_ZONE_ID    = var.cf_zone_id
+    CF_ACCOUNT_ID = var.cf_account_id
+  })
+
+  lifecycle {
+    ignore_changes = [secret_string]
+  }
+}
+
+# Grant EC2 role permission to read the new secret
+resource "aws_iam_role_policy" "cloudflare_api_read" {
+  count = var.cf_api_token != "" ? 1 : 0
+  name  = "${local.name_prefix}-cloudflare-api-read"
+  role  = aws_iam_role.ec2.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Action = ["secretsmanager:GetSecretValue", "secretsmanager:DescribeSecret"]
+      Resource = aws_secretsmanager_secret.cloudflare_api[0].arn
+    }]
+  })
+}
+
 # ---- Rotation metadata (rotation itself is handled by scripts/rotate-secrets.sh) ----
 # AWS managed rotation via Lambda is optional. The rotation script handles it via:
 #   ./scripts/rotate-secrets.sh --component all

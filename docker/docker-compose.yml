@@ -436,6 +436,44 @@ services:
         limits:
           memory: 128m
 
+  # ──────────────────────────────────────────────────────────
+  # THREAT WATCHER — v1.1 automated IP ban
+  # Queries Loki every 5 minutes, bans IPs with > BAN_THRESHOLD
+  # consecutive auth failures via the Cloudflare Firewall API.
+  # Disable by removing CF_API_TOKEN from docker/.env.
+  # ──────────────────────────────────────────────────────────
+  threat-watcher:
+    image: badouralix/curl-jq:alpine
+    <<: *always-restart
+    entrypoint: ["sh", "-c"]
+    command:
+      - |
+        echo "ZeroGate threat-watcher started (interval: 5m)"
+        while true; do
+          /scripts/threat-response.sh || true
+          sleep 300
+        done
+    environment:
+      CF_API_TOKEN: ${CF_API_TOKEN:-}
+      CF_ACCOUNT_ID: ${CF_ACCOUNT_ID:-}
+      LOKI_URL: http://loki:3100
+      BAN_THRESHOLD: ${THREAT_BAN_THRESHOLD:-10}
+      WINDOW_MINUTES: ${THREAT_WINDOW_MINUTES:-10}
+    volumes:
+      - ../scripts/threat-response.sh:/scripts/threat-response.sh:ro
+    networks:
+      - zerogate-internal
+    depends_on:
+      loki:
+        condition: service_healthy
+    logging: *default-logging
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          memory: 64m
+
 networks:
   zerogate-internal:
     driver: bridge

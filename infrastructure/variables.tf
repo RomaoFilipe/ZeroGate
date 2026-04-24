@@ -79,6 +79,59 @@ variable "backup_retention_days" {
   default     = 7
 }
 
+# ============================================================
+# Cloudflare — v1.1 security features
+# ============================================================
+
+variable "cf_api_token" {
+  description = "Cloudflare API token with Zone:Firewall:Edit + Account:Zero Trust:Edit"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "cf_zone_id" {
+  description = "Cloudflare zone ID for your domain"
+  type        = string
+  default     = ""
+}
+
+variable "cf_account_id" {
+  description = "Cloudflare account ID"
+  type        = string
+  default     = ""
+}
+
+variable "enable_geo_blocking" {
+  description = "Enable WAF geo-blocking rules on Cloudflare"
+  type        = bool
+  default     = false
+}
+
+variable "enable_device_posture" {
+  description = "Enable Cloudflare Zero Trust device posture checks (requires WARP client)"
+  type        = bool
+  default     = false
+}
+
+variable "block_countries" {
+  description = "ISO 3166-1 alpha-2 country codes to block (e.g. [\"RU\", \"CN\", \"KP\", \"IR\"])"
+  type        = list(string)
+  default     = ["RU", "CN", "KP", "IR", "BY", "SY"]
+}
+
+variable "allowed_countries" {
+  description = "If allowed_countries_only=true, only these country codes can access the portal"
+  type        = list(string)
+  default     = ["PT", "GB", "DE", "FR", "NL", "ES", "US", "IE"]
+}
+
+variable "allowed_countries_only" {
+  description = "Strict mode: block all countries not in allowed_countries list"
+  type        = bool
+  default     = false
+}
+
 locals {
   name_prefix = "${var.project_name}-${var.environment}"
   az          = var.availability_zone != "" ? var.availability_zone : "${var.aws_region}a"

@@ -126,6 +126,21 @@ check-env: ## Verify .env file has no placeholder values
 	  echo "OK — no placeholders found"; \
 	fi
 
+# ── v1.1: Threat Response ────────────────────────────────────
+threat-dry-run: ## Dry-run threat response (shows what IPs would be banned)
+	docker exec zerogate-threat-watcher-1 /scripts/threat-response.sh --dry-run
+
+threat-run: ## Immediately run threat response (bans eligible IPs now)
+	docker exec zerogate-threat-watcher-1 /scripts/threat-response.sh
+
+threat-list-bans: ## List all IPs currently banned via Cloudflare API
+	@[[ -n "$${CF_API_TOKEN:-}" ]] || { echo "Set CF_API_TOKEN in environment"; exit 1; }
+	@[[ -n "$${CF_ACCOUNT_ID:-}" ]] || { echo "Set CF_ACCOUNT_ID in environment"; exit 1; }
+	@curl -sf \
+	  -H "Authorization: Bearer $${CF_API_TOKEN}" \
+	  "https://api.cloudflare.com/client/v4/accounts/$${CF_ACCOUNT_ID}/firewall/access_rules/rules?mode=block&per_page=50" \
+	  | jq -r '.result[] | "\(.configuration.value)\t\(.notes)"'
+
 check-secrets: ## Verify no secrets are staged for git commit
 	@echo "Scanning for accidentally staged secrets..."
 	@git diff --cached --name-only 2>/dev/null | xargs -I{} sh -c \

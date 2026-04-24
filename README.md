@@ -243,6 +243,17 @@ The full dependency graph of services running inside Docker on the EC2 instance.
 │  │  Retention: Prometheus 30d / 5GB                                        │   │
 │  │  Dashboards: access-logs · security-events · system                     │   │
 │  └──────────────────────────────────────────────────────────────────────────┘   │
+│                                                                                  │
+│  ┌──────────────────────────────────────────────────────────────────────────┐   │
+│  │  THREAT RESPONSE LAYER (v1.1)                                            │   │
+│  │                                                                          │   │
+│  │  threat-watcher (curl-jq:alpine · 64m)                                  │   │
+│  │  Loop every 5m:                                                          │   │
+│  │    1. Query Loki → {service="authentik-server"} |= "login_failed"       │   │
+│  │    2. Extract source IPs from log lines                                  │   │
+│  │    3. Count failures per IP in last WINDOW_MINUTES                       │   │
+│  │    4. IPs ≥ BAN_THRESHOLD → POST Cloudflare Firewall API → block        │   │
+│  └──────────────────────────────────────────────────────────────────────────┘   │
 └──────────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -314,8 +325,9 @@ prometheus                512m    ~ 80 MB
 promtail                  128m    ~ 20 MB
 node-exporter              64m    ~  5 MB
 cadvisor                  128m    ~ 25 MB
+threat-watcher             64m    ~  5 MB
 ─────────────────────────────────────────────────────
-Total limits            5.4 GB
+Total limits            5.5 GB
 Typical actual usage           ~700 MB
 
 Swap: run `make add-swap` on EC2 to add 2 GB swap (recommended)
@@ -755,6 +767,72 @@ make add-swap         # Add 2 GB swap to EC2 (recommended for t2.micro)
 make install-hooks    # Install pre-commit hook for secret scanning
 ```
 
+### v1.1 — WebAuthn / Passkeys
+
+Users can now enroll passkeys (Face ID, Touch ID, YubiKey, Windows Hello) as their MFA method instead of — or in addition to — a TOTP app.
+
+```
+1. User logs in with username + password
+2. Authentik prompts: "Set up your MFA"
+3. User clicks "Passkey / Security Key"
+4. Browser prompts for biometric or hardware key
+5. Device registered — used on every future login
+
+To add a second MFA method:
+  Authentik → top-right menu → User Settings → MFA Devices → Add
+```
+
+### v1.1 — Geo-Blocking
+
+```bash
+# Enable via Terraform
+# Edit infrastructure/terraform.tfvars:
+enable_geo_blocking = true
+
+# Apply — takes effect at Cloudflare edge within 30s
+make apply
+
+# Verify in Cloudflare dashboard:
+# Security → WAF → Custom Rules → "ZeroGate — Geo-Blocking"
+```
+
+### v1.1 — Device Posture
+
+```bash
+# Enable via Terraform
+enable_device_posture = true
+cf_account_id         = "<your CF account ID>"
+make apply
+
+# Users will need Cloudflare WARP installed:
+# Download: https://1.1.1.1/
+# After installing, sign in with their organisation email
+
+# Check who failed posture:
+# Zero Trust → My Team → Devices → filter by "Failed"
+```
+
+### v1.1 — Threat Response
+
+```bash
+# See what would be banned right now (no actual bans)
+make threat-dry-run
+
+# Trigger an immediate ban cycle
+make threat-run
+
+# List all currently banned IPs
+CF_API_TOKEN=xxx CF_ACCOUNT_ID=yyy make threat-list-bans
+
+# View threat-watcher activity in real time
+make logs-threat-watcher
+
+# Tune thresholds (docker/.env)
+THREAT_BAN_THRESHOLD=5    # ban after 5 failures (stricter)
+THREAT_WINDOW_MINUTES=15  # look back 15 minutes
+# Then: make restart
+```
+
 ### Adding a User
 
 ```bash
@@ -1015,10 +1093,10 @@ v1.0 — Current
   [x] CI: TruffleHog + tfsec + ShellCheck + compose validation
 
 v1.1 — Security Hardening
-  [ ] WebAuthn / Passkey support in Authentik (passwordless MFA)
-  [ ] Device posture checks (OS version, disk encryption status)
-  [ ] Geo-blocking via Cloudflare Access policies
-  [ ] Automated threat response: ban IP on anomaly detection
+  [x] WebAuthn / Passkey support in Authentik (Face ID, Touch ID, YubiKey, Windows Hello)
+  [x] Device posture checks: WARP client, disk encryption (BitLocker/FileVault), OS version
+  [x] Geo-blocking: WAF rules via Terraform (block countries + strict allow-list mode)
+  [x] Automated threat response: threat-watcher queries Loki + bans IPs via Cloudflare API
 
 v1.2 — Access Enhancements
   [ ] SCIM provisioning (auto user sync from HR system)

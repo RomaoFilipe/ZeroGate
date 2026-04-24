@@ -205,6 +205,8 @@ services:
   guacd:
     image: guacamole/guacd:1.5.5
     <<: *always-restart
+    volumes:
+      - guacamole-recordings:/recordings
     networks:
       - zerogate-internal
     healthcheck:
@@ -221,6 +223,8 @@ services:
   guacamole:
     image: guacamole/guacamole:1.5.5
     <<: *always-restart
+    volumes:
+      - guacamole-recordings:/recordings:ro
     environment:
       GUACD_HOSTNAME: guacd
       GUACD_PORT: "4822"
@@ -487,6 +491,8 @@ networks:
       com.docker.network.bridge.enable_ip_masquerade: "true"
 
 volumes:
+  guacamole-recordings:
+    name: zerogate-guacamole-recordings
   authentik-db-data:
     name: zerogate-authentik-db
   authentik-redis-data:

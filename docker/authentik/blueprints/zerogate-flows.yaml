@@ -131,6 +131,75 @@ entries:
       is_superuser: false
 
   # ============================================================
+  # TIME-BASED ACCESS POLICY (v1.2)
+  # Enforces access only during configured business hours.
+  # Bind this policy to any flow or stage to restrict when
+  # users can authenticate. By default Mon-Fri 08:00-18:00
+  # in the Europe/Lisbon timezone.
+  #
+  # To apply to a flow:
+  #   Admin → Flows → [flow] → Policy / Group / User Bindings
+  #   → Create → Policy Binding → Select "zerogate-business-hours"
+  # ============================================================
+
+  - model: authentik_policies_expression.ExpressionPolicy
+    state: present
+    identifiers:
+      name: zerogate-business-hours
+    attrs:
+      name: zerogate-business-hours
+      expression: |
+        from datetime import datetime, time
+        import pytz
+
+        # ── Configure here ─────────────────────────────────────
+        TIMEZONE       = "Europe/Lisbon"   # IANA timezone
+        BUSINESS_START = time(8, 0)        # 08:00
+        BUSINESS_END   = time(18, 0)       # 18:00
+        ALLOW_WEEKENDS = False             # Set True to allow Sat/Sun
+        # ───────────────────────────────────────────────────────
+
+        try:
+            tz = pytz.timezone(TIMEZONE)
+        except pytz.exceptions.UnknownTimeZoneError:
+            # Fail open if timezone is misconfigured — log and allow
+            ak_logger.error(f"Unknown timezone: {TIMEZONE}")
+            return True
+
+        now = datetime.now(tz)
+        weekday = now.weekday()  # 0=Monday, 6=Sunday
+        current_time = now.time()
+
+        if not ALLOW_WEEKENDS and weekday >= 5:
+            day_name = now.strftime("%A")
+            ak_message(
+                f"Access is only available Monday–Friday during business hours "
+                f"({BUSINESS_START.strftime('%H:%M')}–{BUSINESS_END.strftime('%H:%M')} {TIMEZONE}). "
+                f"Today is {day_name}."
+            )
+            return False
+
+        if not (BUSINESS_START <= current_time <= BUSINESS_END):
+            ak_message(
+                f"Access is only available {BUSINESS_START.strftime('%H:%M')}–"
+                f"{BUSINESS_END.strftime('%H:%M')} {TIMEZONE}. "
+                f"Current time: {now.strftime('%H:%M')} {TIMEZONE}."
+            )
+            return False
+
+        return True
+
+  # Emergency bypass: members of this group skip the business-hours check.
+  # Add on-call engineers here.
+  - model: authentik_core.Group
+    state: present
+    identifiers:
+      name: business-hours-exempt
+    attrs:
+      name: business-hours-exempt
+      is_superuser: false
+
+  # ============================================================
   # NOTIFICATION TRANSPORT — email alerts on security events
   # ============================================================
 

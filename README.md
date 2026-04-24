@@ -767,6 +767,79 @@ make add-swap         # Add 2 GB swap to EC2 (recommended for t2.micro)
 make install-hooks    # Install pre-commit hook for secret scanning
 ```
 
+### v1.2 — SCIM Provisioning
+
+```bash
+# Apply blueprint (creates SCIM endpoint in Authentik)
+make scim-apply
+
+# Generate a token for your HR system:
+# Authentik Admin → Directory → Tokens → Create (Intent: API)
+# Provide to HR system as:
+#   Endpoint: https://auth.yourdomain.com/source/scim/hr-scim/v2/
+#   Auth:     Bearer <token>
+```
+
+### v1.2 — SAML Federation
+
+```bash
+# 1. Fill IdP URLs in the blueprint before applying:
+#    docker/authentik/blueprints/zerogate-saml.yaml
+#    → sso_url, slo_url, issuer, sp_binding
+
+# 2. Apply
+make saml-apply
+
+# 3. Get your SP metadata URL to give to the IdP
+make saml-metadata
+
+# 4. In Azure AD or Okta, configure their side with the ACS + Entity ID URLs
+#    Download their signing certificate and import in Authentik Admin → Certificates
+```
+
+### v1.2 — Time-Based Access
+
+```bash
+# The business-hours policy is applied automatically by the blueprint.
+# To attach it to any flow:
+# Authentik Admin → Flows → [flow] → Bindings → Create → Policy → zerogate-business-hours
+
+# To change the schedule (timezone, hours, weekend):
+# Authentik Admin → Policies → zerogate-business-hours → Edit expression
+
+# Add on-call engineers to bypass business hours:
+# Authentik Admin → Directory → Groups → business-hours-exempt → Add member
+```
+
+### v1.2 — Session Recording
+
+```bash
+# Enable recording on all existing connections (run once after setup)
+make recording-enable
+
+# Preview the SQL that will be run (no changes)
+make recording-enable-dry
+
+# List all recordings on disk
+make recording-list
+
+# Filter by user
+make recording-list-alice
+
+# Archive recordings older than 30 days to S3, delete locally
+make recording-archive
+
+# Archive with custom age threshold
+make recording-archive DAYS=14
+
+# Permanently delete recordings older than 90 days (asks for confirmation)
+make recording-purge DAYS=90
+
+# Export one recording to the current directory
+make recording-export FILE=alice-server-20260101_120000.guac
+# Play with: guacenc -f mp4 alice-server-20260101_120000.guac
+```
+
 ### v1.1 — WebAuthn / Passkeys
 
 Users can now enroll passkeys (Face ID, Touch ID, YubiKey, Windows Hello) as their MFA method instead of — or in addition to — a TOTP app.
@@ -935,7 +1008,9 @@ zerogate/
 │   │
 │   ├── authentik/
 │   │   └── blueprints/
-│   │       └── zerogate-flows.yaml  # MFA flows, password policy, groups
+│   │       ├── zerogate-flows.yaml  # MFA, password policy, time-based policy, groups
+│   │       ├── zerogate-scim.yaml   # SCIM v2.0 inbound (HR system sync)
+│   │       └── zerogate-saml.yaml   # SAML 2.0 SP (Azure AD / Okta federation)
 │   │
 │   ├── guacamole/
 │   │   ├── guacamole.properties.example
@@ -965,7 +1040,10 @@ zerogate/
 │   ├── health-check.sh            # Service health verification
 │   ├── security-audit.sh          # Security posture check (ports, TLS, MFA)
 │   ├── update.sh                  # Rolling service image update
-│   └── add-swap.sh                # Add swap file (recommended for t2.micro)
+│   ├── add-swap.sh                # Add swap file (recommended for t2.micro)
+│   ├── threat-response.sh         # v1.1 — auto IP ban via Cloudflare API
+│   ├── guacamole-enable-recording.sh  # v1.2 — enable recording on all connections
+│   └── recordings-manage.sh       # v1.2 — list, archive, purge session recordings
 │
 ├── policies/
 │   ├── access-policies.md         # Cloudflare Access policy definitions
@@ -1099,10 +1177,10 @@ v1.1 — Security Hardening
   [x] Automated threat response: threat-watcher queries Loki + bans IPs via Cloudflare API
 
 v1.2 — Access Enhancements
-  [ ] SCIM provisioning (auto user sync from HR system)
-  [ ] SAML 2.0 support for enterprise IdP federation
-  [ ] Time-based access policies (business hours only)
-  [ ] Per-connection session recording in Guacamole
+  [x] SCIM v2.0 inbound provisioning from HR systems (Okta, Azure AD, Workday)
+  [x] SAML 2.0 SP federation with Azure AD and Okta (attribute + group mappings)
+  [x] Time-based access: Mon–Fri 08:00–18:00 expression policy, on-call bypass group
+  [x] Per-connection session recording in Guacamole (.guac files, S3 archive, purge)
 
 v2.0 — High Availability
   [ ] Multi-AZ deployment (RDS for Authentik/Guacamole DBs)

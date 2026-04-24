@@ -126,6 +126,46 @@ check-env: ## Verify .env file has no placeholder values
 	  echo "OK — no placeholders found"; \
 	fi
 
+# ── v1.2: SCIM / SAML ───────────────────────────────────────
+scim-apply: ## Apply SCIM provisioning blueprint to Authentik
+	docker exec zerogate-authentik-worker-1 \
+	  ak apply_blueprint /blueprints/zerogate-scim.yaml
+
+saml-apply: ## Apply SAML federation blueprint to Authentik
+	docker exec zerogate-authentik-worker-1 \
+	  ak apply_blueprint /blueprints/zerogate-saml.yaml
+
+saml-metadata: ## Print Authentik SP metadata URL for your IdP
+	@echo "Give this URL to your enterprise IdP (Azure AD, Okta, etc.):"
+	@echo "  SP Metadata:  https://auth.$$(grep '^DOMAIN=' docker/.env | cut -d= -f2)/source/saml/enterprise-idp/metadata/"
+	@echo "  ACS URL:      https://auth.$$(grep '^DOMAIN=' docker/.env | cut -d= -f2)/source/saml/enterprise-idp/acs/"
+	@echo "  Entity ID:    https://auth.$$(grep '^DOMAIN=' docker/.env | cut -d= -f2)/source/saml/enterprise-idp/"
+
+# ── v1.2: Session Recording ──────────────────────────────────
+recording-enable: ## Enable session recording on all Guacamole connections
+	./scripts/guacamole-enable-recording.sh
+
+recording-enable-dry: ## Dry-run recording enable (shows SQL only)
+	./scripts/guacamole-enable-recording.sh --dry-run
+
+recording-disable: ## Remove session recording from all connections
+	./scripts/guacamole-enable-recording.sh --disable
+
+recording-list: ## List all session recordings with size and age
+	./scripts/recordings-manage.sh list
+
+recording-list-%: ## Filter recordings by user: make recording-list-alice
+	./scripts/recordings-manage.sh list --user $*
+
+recording-archive: ## Archive recordings >30d to S3 and delete locally
+	./scripts/recordings-manage.sh archive --older-than $(or $(DAYS),30)
+
+recording-purge: ## Permanently delete recordings >90d (no S3 upload, asks for confirmation)
+	./scripts/recordings-manage.sh purge --older-than $(or $(DAYS),90)
+
+recording-export: ## Export a single recording file: make recording-export FILE=alice-server-20260101_120000.guac
+	./scripts/recordings-manage.sh export $(FILE)
+
 # ── v1.1: Threat Response ────────────────────────────────────
 threat-dry-run: ## Dry-run threat response (shows what IPs would be banned)
 	docker exec zerogate-threat-watcher-1 /scripts/threat-response.sh --dry-run

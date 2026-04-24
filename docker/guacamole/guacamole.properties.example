@@ -16,3 +16,25 @@ ssl-protocol: TLSv1.2,TLSv1.3
 
 # Clipboard integration (disabled for security — re-enable per policy)
 # Note: controlled at the connection group level in the admin UI
+
+# ── Session Recording (v1.2) ──────────────────────────────────
+# Recording is enabled per-connection via the Guacamole admin UI
+# or via scripts/guacamole-enable-recording.sh (applies to all).
+#
+# These are the default parameter values injected at the guacd level.
+# They are referenced in the connection settings as the recording-path.
+#
+# The /recordings volume is mounted in guacd and available read-only
+# in the guacamole container for management scripts.
+#
+# Recording path pattern (set per-connection in admin UI):
+#   recording-path:   /recordings
+#   recording-name:   ${GUAC_USERNAME}-${GUAC_CLIENT_HOSTNAME}-${GUAC_DATE}_${GUAC_TIME}
+#   recording-include-keys: true
+#
+# To enable recording on ALL existing connections automatically:
+#   make recording-enable
+#
+# To list and manage recordings:
+#   make recording-list
+#   make recording-archive   (uploads to S3 and deletes local copies)

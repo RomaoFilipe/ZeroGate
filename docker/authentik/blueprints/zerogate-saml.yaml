@@ -1,0 +1,169 @@
+# ============================================================
+# Authentik Blueprint — SAML 2.0 Enterprise Federation (v1.2)
+#
+# Configures Authentik as a SAML 2.0 Service Provider (SP).
+# Your enterprise IdP (Azure AD, Okta, Google Workspace) acts
+# as the Identity Provider (IdP) and issues SAML assertions.
+# Users authenticate with their corporate account — no separate
+# ZeroGate password required.
+#
+# Apply:
+#   docker exec zerogate-authentik-worker-1 \
+#     ak apply_blueprint /blueprints/zerogate-saml.yaml
+#
+# After applying, export the SP metadata:
+#   https://auth.yourdomain.com/source/saml/enterprise-idp/metadata/
+# Upload this metadata XML to your enterprise IdP.
+#
+# Configuration per IdP:
+#   Azure AD  → see docs/ONBOARDING.md § Azure AD SAML Federation
+#   Okta      → see docs/ONBOARDING.md § Okta SAML Federation
+#   Google WS → see docs/ONBOARDING.md § Google Workspace SAML
+# ============================================================
+
+version: 1
+metadata:
+  name: ZeroGate SAML Federation
+  labels:
+    blueprints.goauthentik.io/description: SAML 2.0 SP — federate with enterprise IdP (Azure AD, Okta)
+
+entries:
+
+  # ── SAML Source ───────────────────────────────────────────────
+  # Authentik SP metadata URL (give this to your IdP):
+  #   https://auth.yourdomain.com/source/saml/enterprise-idp/metadata/
+  #
+  # ACS (Assertion Consumer Service) URL — enter in your IdP:
+  #   https://auth.yourdomain.com/source/saml/enterprise-idp/acs/
+  #
+  # SLO (Single Logout) URL — enter in your IdP:
+  #   https://auth.yourdomain.com/source/saml/enterprise-idp/slo/
+  - model: authentik_sources_saml.SAMLSource
+    state: present
+    identifiers:
+      slug: enterprise-idp
+    attrs:
+      name: "Enterprise IdP (SAML)"
+      slug: enterprise-idp
+      enabled: true
+
+      # --- Replace these with values from your IdP ---------------
+      # Azure AD:  App registrations → Endpoints → SAML-P sign-on endpoint
+      # Okta:      SSO URL from the Okta SAML app settings
+      sso_url: "https://REPLACE_WITH_IDP_SSO_URL"
+
+      # Azure AD:  App registrations → Endpoints → SAML-P sign-out endpoint
+      # Okta:      Single Logout URL from Okta app settings (if enabled)
+      slo_url: "https://REPLACE_WITH_IDP_SLO_URL"
+
+      # Azure AD:  Azure AD tenant ID → https://sts.windows.net/<tenant-id>/
+      # Okta:      Issuer URI from Okta app settings
+      issuer: "REPLACE_WITH_IDP_ISSUER"
+
+      # The entity ID Authentik presents to the IdP.
+      # Usually your Authentik URL — must match exactly what you configured in the IdP.
+      sp_binding: "REPLACE_WITH_SP_ENTITY_ID"
+      # -----------------------------------------------------------
+
+      # SP-initiated SSO uses HTTP Redirect binding (most compatible)
+      binding_type: redirect
+
+      # NameID format — email works for Azure AD and Okta
+      # Options: email, persistent, transient, windows, x509, unspecified
+      name_id_policy: email
+
+      # Allow IdP-initiated SSO (user clicks app tile in Okta/Azure AD portal)
+      allow_idp_initiated: true
+
+      # Verify the IdP's SAML assertions are signed.
+      # Import your IdP's certificate fingerprint or certificate below.
+      # Azure AD: download federation metadata XML → extract X509Certificate
+      # Okta: Download certificate from app settings
+      # verification_kp: !KeyOf your-imported-cert   # set in UI after importing cert
+
+      # Signing: Authentik signs AuthnRequests sent to the IdP.
+      # Leave empty to skip signing (acceptable if IdP doesn't require it).
+      # signing_kp: !KeyOf zerogate-signing-cert
+
+      # User matching: link SAML users to existing Authentik users by email.
+      # Change to identifier if using persistent NameID format.
+      user_matching_mode: email_link
+      group_matching_mode: name_link
+
+  # ── Attribute mappings ────────────────────────────────────────
+  # Map SAML assertion attributes to Authentik user fields.
+
+  # Display name from SAML
+  - model: authentik_sources_saml.SAMLSourcePropertyMapping
+    state: present
+    identifiers:
+      name: zerogate-saml-name
+    attrs:
+      name: zerogate-saml-name
+      # Azure AD sends: http://schemas.microsoft.com/identity/claims/displayname
+      # Okta sends: urn:oid:2.16.840.1.113730.3.1.241 or just "displayName"
+      saml_name: "http://schemas.microsoft.com/identity/claims/displayname"
+      expression: |
+        return list_flatten(attributes.get("http://schemas.microsoft.com/identity/claims/displayname", []))
+
+  # Email from SAML
+  - model: authentik_sources_saml.SAMLSourcePropertyMapping
+    state: present
+    identifiers:
+      name: zerogate-saml-email
+    attrs:
+      name: zerogate-saml-email
+      saml_name: "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress"
+      expression: |
+        return list_flatten(attributes.get(
+            "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress",
+            attributes.get("email", [])
+        ))
+
+  # Groups from SAML — maps IdP groups to Authentik groups
+  - model: authentik_sources_saml.SAMLSourcePropertyMapping
+    state: present
+    identifiers:
+      name: zerogate-saml-groups
+    attrs:
+      name: zerogate-saml-groups
+      # Azure AD: http://schemas.microsoft.com/ws/2008/06/identity/claims/groups
+      # Okta: groups attribute (configure in Okta app)
+      saml_name: "http://schemas.microsoft.com/ws/2008/06/identity/claims/groups"
+      expression: |
+        raw_groups = attributes.get(
+            "http://schemas.microsoft.com/ws/2008/06/identity/claims/groups",
+            attributes.get("groups", [])
+        )
+        return {"groups": list_flatten(raw_groups)}
+
+  # Department — maps to Authentik group for access control
+  - model: authentik_sources_saml.SAMLSourcePropertyMapping
+    state: present
+    identifiers:
+      name: zerogate-saml-department
+    attrs:
+      name: zerogate-saml-department
+      saml_name: "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/department"
+      expression: |
+        dept = list_flatten(attributes.get(
+            "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/department", []
+        ))
+        if dept:
+            return {"groups": dept}
+        return {}
+
+  # ── Enrollment flow for new federated users ───────────────────
+  # When a user authenticates via SAML for the first time, run
+  # this flow to create their Authentik account and enroll MFA.
+  - model: authentik_flows.Flow
+    state: present
+    identifiers:
+      slug: zerogate-saml-enrollment
+    attrs:
+      name: "ZeroGate SAML Enrollment"
+      slug: zerogate-saml-enrollment
+      title: "Completing your ZeroGate account setup"
+      designation: enrollment
+      authentication: require_unauthenticated
+      layout: stacked

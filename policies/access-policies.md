@@ -134,6 +134,154 @@ Zero Trust → Settings → Authentication → Add new identity provider
 
 ---
 
+## SCIM Provisioning Policy (v1.2)
+
+Managed by `docker/authentik/blueprints/zerogate-scim.yaml`.
+
+### Endpoint
+
+```
+https://auth.yourdomain.com/source/scim/hr-scim/v2/
+```
+
+### Authentication
+
+The HR system authenticates with a Bearer token:
+
+```
+1. Authentik Admin → Directory → Tokens → Create
+2. Intent: API
+3. Copy the token
+4. Paste into your HR system as: Authorization: Bearer <token>
+```
+
+### What Gets Synced
+
+| SCIM Object | Authentik Object | Matching |
+|---|---|---|
+| User | User | Email (link if exists, create if not) |
+| Group | Group | Name (link if exists, create if not) |
+| Department | Group | Via enterprise extension attribute |
+
+### HR System Configuration
+
+**Okta:**
+```
+SCIM Connector Base URL: https://auth.yourdomain.com/source/scim/hr-scim/v2
+Authentication Mode: HTTP Header (Bearer)
+Token: <generated above>
+Supported SCIM Actions: Push Users, Push Groups
+```
+
+**Azure AD:**
+```
+Tenant URL: https://auth.yourdomain.com/source/scim/hr-scim/v2
+Secret Token: <generated above>
+Attribute Mapping: use defaults (email → email, displayName → name)
+```
+
+### New User Onboarding Flow
+
+When a new user is pushed via SCIM:
+1. Authentik account created automatically
+2. User receives a password-setup email (Authentik invitation)
+3. User sets their password and enrolls MFA on first login
+4. Access groups are applied from the SCIM group push
+
+---
+
+## SAML 2.0 Federation Policy (v1.2)
+
+Managed by `docker/authentik/blueprints/zerogate-saml.yaml`.
+
+### SP (Authentik) Metadata
+
+```
+Metadata URL:   https://auth.yourdomain.com/source/saml/enterprise-idp/metadata/
+ACS URL:        https://auth.yourdomain.com/source/saml/enterprise-idp/acs/
+SLO URL:        https://auth.yourdomain.com/source/saml/enterprise-idp/slo/
+Entity ID:      https://auth.yourdomain.com/source/saml/enterprise-idp/
+Binding:        HTTP Redirect (AuthnRequest) + HTTP POST (ACS)
+```
+
+### Azure AD Configuration
+
+```
+1. Azure Portal → Azure AD → Enterprise Applications → New application → Create your own
+2. Name: ZeroGate
+3. Set up single sign-on → SAML
+4. Basic SAML Configuration:
+   Entity ID (Identifier):     https://auth.yourdomain.com/source/saml/enterprise-idp/
+   Reply URL (ACS):            https://auth.yourdomain.com/source/saml/enterprise-idp/acs/
+   Sign-on URL:                https://auth.yourdomain.com/if/flow/default-authentication-flow/
+5. Attributes & Claims:
+   email →     user.mail
+   displayName → user.displayname
+   groups →    group.id (or group.displayName for name-based matching)
+6. Download Certificate (Base64) → import to Authentik as certificate
+7. Copy:
+   - Login URL → paste as sso_url in zerogate-saml.yaml
+   - Azure AD Identifier → paste as issuer in zerogate-saml.yaml
+```
+
+### Okta Configuration
+
+```
+1. Okta Admin → Applications → Create App Integration → SAML 2.0
+2. Single sign-on URL (ACS): https://auth.yourdomain.com/source/saml/enterprise-idp/acs/
+3. Audience URI (SP Entity ID): https://auth.yourdomain.com/source/saml/enterprise-idp/
+4. Attribute Statements:
+   email →       user.email
+   displayName → user.displayName
+   groups →      Leave empty or use Group Attribute Statements
+5. Download Okta certificate → import to Authentik
+6. Copy Identity Provider SSO URL → sso_url in zerogate-saml.yaml
+```
+
+---
+
+## Time-Based Access Policy (v1.2)
+
+Managed by `docker/authentik/blueprints/zerogate-flows.yaml` (expression policy: `zerogate-business-hours`).
+
+### Default Schedule
+
+| Day | Access |
+|---|---|
+| Monday – Friday | 08:00 – 18:00 (Europe/Lisbon) |
+| Saturday – Sunday | Denied |
+| Public holidays | Not enforced (use manual group bypass) |
+
+### Applying to a Flow
+
+```
+Authentik Admin → Flows → [your flow] → Policy / Group / User Bindings
+→ Create Binding → Policy → zerogate-business-hours
+→ Order: 0 (runs first)
+→ Enable: true
+→ Timeout: 30 (seconds)
+```
+
+### Changing the Schedule
+
+Edit the expression directly in Authentik:
+```
+Admin → Policies → zerogate-business-hours → Edit expression
+# Change TIMEZONE, BUSINESS_START, BUSINESS_END, or ALLOW_WEEKENDS
+```
+
+### Emergency Bypass (On-Call)
+
+Add on-call engineers to the `business-hours-exempt` group. Bind this group **above** the time policy with a higher-priority allow rule:
+
+```
+Authentik Admin → [flow] → Bindings
+  Binding 1 (order 0): Group = business-hours-exempt  → allow
+  Binding 2 (order 10): Policy = zerogate-business-hours → deny outside hours
+```
+
+---
+
 ## Geo-Blocking Policy (v1.1)
 
 Managed by Terraform in `infrastructure/cloudflare.tf`. Applied at the Cloudflare edge — blocked countries never reach Authentik or the tunnel.

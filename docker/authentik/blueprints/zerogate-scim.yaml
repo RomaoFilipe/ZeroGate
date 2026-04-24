@@ -1,0 +1,85 @@
+# ============================================================
+# Authentik Blueprint — SCIM v2.0 Inbound Provisioning (v1.2)
+#
+# Creates a SCIM source that accepts user/group pushes from
+# any SCIM 2.0-compatible HR system (Okta, Azure AD, Workday,
+# BambooHR, etc.)
+#
+# Endpoint after apply:
+#   https://auth.yourdomain.com/source/scim/hr-scim/v2/
+#
+# Apply:
+#   docker exec zerogate-authentik-worker-1 \
+#     ak apply_blueprint /blueprints/zerogate-scim.yaml
+#
+# Then generate a token:
+#   Admin → Directory → Tokens → Create
+#   Intent: API
+#   Copy the token → paste into your HR system as Bearer token
+# ============================================================
+
+version: 1
+metadata:
+  name: ZeroGate SCIM Provisioning
+  labels:
+    blueprints.goauthentik.io/description: SCIM v2.0 inbound user sync from HR systems
+
+entries:
+
+  # ── SCIM Source ──────────────────────────────────────────────
+  # Creates the /source/scim/hr-scim/v2/ endpoint.
+  # HR systems push Users and Groups here via SCIM 2.0 protocol.
+  - model: authentik_sources_scim.SCIMSource
+    state: present
+    identifiers:
+      slug: hr-scim
+    attrs:
+      name: "HR System (SCIM)"
+      slug: hr-scim
+      enabled: true
+
+      # How to match incoming SCIM users to existing Authentik users.
+      # email_link: match by email, link accounts if found, create if not.
+      # Use identifier if your HR system sets a stable externalId.
+      user_matching_mode: email_link
+
+      # How to match incoming SCIM groups to existing Authentik groups.
+      # name_link: match by group name, link if found, create if not.
+      group_matching_mode: name_link
+
+      # Property mappings — leave empty to use defaults.
+      # Custom mappings can be created under Admin → Customisation → Property Mappings.
+      user_property_mappings: []
+      group_property_mappings: []
+
+  # ── Property mapping: map SCIM department → Authentik group ──
+  # Authentik will automatically create groups from SCIM Group pushes.
+  # Additionally, map the SCIM "department" attribute to a group.
+  - model: authentik_sources_scim.SCIMSourcePropertyMapping
+    state: present
+    identifiers:
+      name: zerogate-scim-department-group
+    attrs:
+      name: zerogate-scim-department-group
+      expression: |
+        # Map the SCIM user's department attribute to an Authentik group.
+        # The group is created automatically if it doesn't exist.
+        department = scim_data.get("urn:ietf:params:scim:schemas:extension:enterprise:2.0:User", {}).get("department")
+        if department:
+            return {"groups": [department]}
+        return {}
+
+  # ── Enrollment flow for SCIM-provisioned users ────────────────
+  # When a new user is pushed via SCIM, they need a flow to set
+  # their password on first login (SCIM does not sync passwords).
+  - model: authentik_flows.Flow
+    state: present
+    identifiers:
+      slug: zerogate-scim-enrollment
+    attrs:
+      name: "ZeroGate SCIM Enrollment"
+      slug: zerogate-scim-enrollment
+      title: "Welcome to ZeroGate — complete your account setup"
+      designation: enrollment
+      authentication: require_unauthenticated
+      layout: stacked

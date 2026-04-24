@@ -1,0 +1,184 @@
+apiVersion: 1
+
+# NOTE: Grafana provisioning YAML does not expand shell/docker env vars.
+# Set ALERT_EMAIL below to your actual address before deploying.
+# Or configure contact points via Grafana UI after first boot.
+
+groups:
+  - orgId: 1
+    name: ZeroGate Security Alerts
+    folder: ZeroGate Alerts
+    interval: 1m
+    rules:
+      - uid: auth-brute-force
+        title: "Brute Force: >5 failed logins in 10 min"
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: loki
+            relativeTimeRange:
+              from: 600
+              to: 0
+            model:
+              expr: 'sum(count_over_time({service="authentik-server"} |= "login_failed" [10m]))'
+              instant: true
+              range: false
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              conditions:
+                - evaluator: { params: [5], type: gt }
+                  query: { params: [A] }
+        noDataState: OK
+        execErrState: Alerting
+        for: 0s
+        annotations:
+          summary: "Possible brute force attack detected"
+          description: "More than 5 failed logins in 10 minutes — investigate immediately"
+        labels:
+          severity: critical
+
+      - uid: mfa-failures
+        title: "MFA Failures: >3 in 5 min for single user"
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: loki
+            relativeTimeRange:
+              from: 300
+              to: 0
+            model:
+              expr: 'sum by (username) (count_over_time({service="authentik-server"} |= "mfa_failed" [5m]))'
+              instant: true
+              range: false
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              conditions:
+                - evaluator: { params: [3], type: gt }
+                  query: { params: [A] }
+        noDataState: OK
+        execErrState: Alerting
+        for: 0s
+        annotations:
+          summary: "Multiple MFA failures for a single user"
+        labels:
+          severity: high
+
+      - uid: disk-usage-high
+        title: "Disk Usage > 80%"
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: prometheus
+            relativeTimeRange:
+              from: 300
+              to: 0
+            model:
+              expr: '(1 - node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) * 100'
+              instant: true
+              range: false
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              conditions:
+                - evaluator: { params: [80], type: gt }
+                  query: { params: [A] }
+        noDataState: OK
+        execErrState: Alerting
+        for: 5m
+        annotations:
+          summary: "Disk usage above 80%"
+          description: "Root filesystem usage exceeded 80% — clean up or expand volume"
+        labels:
+          severity: warning
+
+      - uid: container-restarted
+        title: "Critical Container Restarted"
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: prometheus
+            relativeTimeRange:
+              from: 300
+              to: 0
+            model:
+              expr: 'increase(container_start_time_seconds{container_label_com_docker_compose_service=~"authentik-server|guacamole|cloudflared|authentik-worker"}[5m])'
+              instant: true
+              range: false
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              conditions:
+                - evaluator: { params: [0], type: gt }
+                  query: { params: [A] }
+        noDataState: OK
+        execErrState: Alerting
+        for: 0s
+        annotations:
+          summary: "A critical ZeroGate container was restarted"
+          description: "Check container logs: docker compose logs --tail=100 <service>"
+        labels:
+          severity: high
+
+      - uid: tunnel-unhealthy
+        title: "Cloudflare Tunnel Disconnected"
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: prometheus
+            relativeTimeRange:
+              from: 120
+              to: 0
+            model:
+              expr: 'absent(container_last_seen{container_label_com_docker_compose_service="cloudflared"})'
+              instant: true
+              range: false
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              conditions:
+                - evaluator: { params: [0], type: gt }
+                  query: { params: [A] }
+        noDataState: OK
+        execErrState: Alerting
+        for: 2m
+        annotations:
+          summary: "Cloudflare Tunnel is not running"
+          description: "All user access is blocked. Check: docker compose logs cloudflared"
+        labels:
+          severity: critical
+
+contact_points:
+  - orgId: 1
+    name: email-alerts
+    receivers:
+      - uid: email-receiver
+        type: email
+        settings:
+          # EDIT THIS: replace with your actual alert email address
+          addresses: "security@yourdomain.com"
+          subject: "[ZeroGate] {{ .GroupLabels.severity | upper }}: {{ .CommonAnnotations.summary }}"
+          message: |
+            Alert: {{ .CommonAnnotations.summary }}
+            Details: {{ .CommonAnnotations.description }}
+            Severity: {{ .GroupLabels.severity }}
+            Time: {{ .StartsAt }}
+
+policies:
+  - orgId: 1
+    receiver: email-alerts
+    group_by: [alertname, severity]
+    group_wait: 30s
+    group_interval: 5m
+    repeat_interval: 4h
+    routes:
+      - receiver: email-alerts
+        matchers:
+          - severity =~ "critical|high"
+        repeat_interval: 1h

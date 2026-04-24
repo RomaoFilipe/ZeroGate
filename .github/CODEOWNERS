@@ -1,0 +1,16 @@
+# ZeroGate — Code Owners
+# Security-sensitive paths require explicit review before merge.
+
+# Default: all changes require review
+*                               @your-org/platform-team
+
+# Infrastructure changes — require infrastructure + security review
+/infrastructure/                @your-org/platform-team @your-org/security-team
+
+# Auth flow + access policies — require security team review
+/docker/authentik/              @your-org/security-team
+/docker/cloudflared/            @your-org/security-team
+/policies/                      @your-org/security-team
+
+# CI pipeline — require platform team review
+/.github/                       @your-org/platform-team

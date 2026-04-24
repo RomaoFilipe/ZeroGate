@@ -1,0 +1,70 @@
+# ============================================================
+# ZeroGate — .gitignore
+# NEVER commit secrets, credentials, or local overrides
+# ============================================================
+
+# ---- Secrets & credentials --------------------------------
+.env
+.env.local
+.env.*.local
+docker/authentik/.env
+docker/cloudflared/credentials.json
+docker/cloudflared/config.yml
+docker/guacamole/guacamole.properties
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.cer
+id_rsa
+id_ed25519
+*.secret
+
+# ---- Terraform --------------------------------------------
+infrastructure/.terraform/
+infrastructure/.terraform.lock.hcl
+infrastructure/terraform.tfstate
+infrastructure/terraform.tfstate.backup
+infrastructure/terraform.tfvars
+infrastructure/*.tfplan
+infrastructure/tfplan
+infrastructure/override.tf
+infrastructure/override.tf.json
+infrastructure/*_override.tf
+infrastructure/*_override.tf.json
+
+# ---- Docker local overrides -------------------------------
+docker/docker-compose.override.yml
+docker/guacamole/init/initdb.sql
+
+# ---- Runtime data (generated) -----------------------------
+docker/authentik/media/
+docker/authentik/custom-templates/
+docker/observability/grafana/data/
+docker/observability/loki/data/
+docker/observability/prometheus/data/
+volumes/
+
+# ---- Backup files -----------------------------------------
+*.bak
+*.backup
+backups/
+
+# ---- OS & editor ------------------------------------------
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# ---- Logs -------------------------------------------------
+*.log
+logs/
+
+# ---- Misc -------------------------------------------------
+__pycache__/
+*.pyc
+node_modules/

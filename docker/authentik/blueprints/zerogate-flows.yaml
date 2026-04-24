@@ -1,0 +1,87 @@
+# ============================================================
+# Authentik Blueprint — ZeroGate flows & policies
+# Apply via: Admin UI → System → Blueprints → Import
+# Or: docker exec authentik-worker ak apply_blueprint /blueprints/zerogate-flows.yaml
+# ============================================================
+
+version: 1
+metadata:
+  name: ZeroGate Core Flows
+  labels:
+    blueprints.goauthentik.io/description: ZeroGate authentication flows with MFA enforcement
+
+entries:
+  # ---- Password policy: min 14 chars, complexity required --
+  - model: authentik_policies_password.PasswordPolicy
+    state: present
+    identifiers:
+      name: zerogate-password-policy
+    attrs:
+      name: zerogate-password-policy
+      min_length: 14
+      min_uppercase: 1
+      min_lowercase: 1
+      min_digits: 1
+      min_symbols: 1
+      error_message: "Password must be at least 14 characters with uppercase, lowercase, digits, and symbols."
+      check_have_i_been_pwned: true
+      hibp_allowed_count: 0
+
+  # ---- Account lockout after 5 failed attempts ------------
+  - model: authentik_policies_reputation.ReputationPolicy
+    state: present
+    identifiers:
+      name: zerogate-brute-force-protection
+    attrs:
+      name: zerogate-brute-force-protection
+      check_ip: true
+      check_username: true
+      threshold: -5
+
+  # ---- TOTP authenticator configuration ------------------
+  - model: authentik_stages_authenticator_totp.AuthenticatorTOTPStage
+    state: present
+    identifiers:
+      name: zerogate-totp-setup
+    attrs:
+      name: zerogate-totp-setup
+      friendly_name: "ZeroGate MFA"
+      digits: 6
+
+  # ---- Authenticator validation (enforce MFA) -------------
+  - model: authentik_stages_authenticator_validate.AuthenticatorValidateStage
+    state: present
+    identifiers:
+      name: zerogate-mfa-validation
+    attrs:
+      name: zerogate-mfa-validation
+      device_classes:
+        - totp
+        - webauthn
+      not_configured_action: configure
+      webauthn_user_verification: required
+
+  # ---- Default groups ------------------------------------
+  - model: authentik_core.Group
+    state: present
+    identifiers:
+      name: zerogate-users
+    attrs:
+      name: zerogate-users
+      is_superuser: false
+
+  - model: authentik_core.Group
+    state: present
+    identifiers:
+      name: grafana-admin
+    attrs:
+      name: grafana-admin
+      is_superuser: false
+
+  - model: authentik_core.Group
+    state: present
+    identifiers:
+      name: remote-access
+    attrs:
+      name: remote-access
+      is_superuser: false

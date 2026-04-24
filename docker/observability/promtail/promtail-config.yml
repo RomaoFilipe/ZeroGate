@@ -1,0 +1,99 @@
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+  log_level: warn
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+    tenant_id: zerogate
+    backoff_config:
+      min_period: 100ms
+      max_period: 10s
+      max_retries: 10
+
+scrape_configs:
+  # ---- All Docker container logs -------------------------
+  - job_name: docker-containers
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 5s
+        filters:
+          - name: label
+            values: ["com.docker.compose.project=zerogate"]
+    relabel_configs:
+      - source_labels: [__meta_docker_container_name]
+        target_label: container
+        regex: "/(.*)"
+      - source_labels: [__meta_docker_container_label_com_docker_compose_service]
+        target_label: service
+      - source_labels: [__meta_docker_container_label_com_docker_compose_project]
+        target_label: project
+      - source_labels: [__meta_docker_container_image]
+        target_label: image
+    pipeline_stages:
+      # Parse JSON logs where possible
+      - json:
+          expressions:
+            level: level
+            msg: msg
+            message: message
+            event: event
+      - labels:
+          level:
+      # Drop noisy health check logs
+      - drop:
+          expression: '.*(healthcheck|GET /health|GET /ready).*'
+          drop_counter_reason: healthcheck_noise
+
+  # ---- Authentik — parse structured events ---------------
+  - job_name: authentik-events
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 5s
+        filters:
+          - name: label
+            values: ["com.docker.compose.service=authentik-server"]
+    relabel_configs:
+      - source_labels: [__meta_docker_container_label_com_docker_compose_service]
+        target_label: service
+      - target_label: log_type
+        replacement: auth-event
+    pipeline_stages:
+      - json:
+          expressions:
+            level: level
+            event: event
+            action: action
+            username: username
+            client_ip: client_ip
+      - labels:
+          level:
+          action:
+      # Alert-worthy: failed logins, MFA failures
+      - match:
+          selector: '{service="authentik-server"}'
+          pipeline_name: auth_failures
+          stages:
+            - json:
+                expressions:
+                  action: action
+            - template:
+                source: action
+                template: '{{ if eq .Value "login_failed" }}SECURITY{{ end }}'
+
+  # ---- System logs (host-level) --------------------------
+  - job_name: syslog
+    static_configs:
+      - targets: [localhost]
+        labels:
+          job: syslog
+          host: zerogate-server
+          __path__: /var/log/syslog
+    pipeline_stages:
+      - regex:
+          expression: '^(?P<timestamp>\w{3}\s+\d+\s+\d+:\d+:\d+)\s+(?P<host>\S+)\s+(?P<process>\S+):\s+(?P<message>.*)$'
+      - labels:
+          process:

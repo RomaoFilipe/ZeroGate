@@ -1,0 +1,65 @@
+#!/bin/bash
+# ============================================================
+# ZeroGate pre-commit hook — blocks accidental secret commits
+# Install: make install-hooks
+# ============================================================
+set -euo pipefail
+
+RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; NC='\033[0m'
+ERRORS=0
+
+# ---- 1. Block known secret file paths ----------------------
+SECRET_PATTERNS=(
+  "docker/.env$"
+  "docker/cloudflared/credentials.json"
+  "docker/cloudflared/config.yml$"
+  "docker/guacamole/guacamole.properties$"
+  "infrastructure/terraform.tfvars$"
+  "infrastructure/terraform.tfstate"
+  ".*.pem$"
+  ".*.key$"
+)
+
+for pattern in "${SECRET_PATTERNS[@]}"; do
+  if git diff --cached --name-only | grep -qE "${pattern}"; then
+    echo -e "${RED}[BLOCKED]${NC} Attempt to commit secret file matching: ${pattern}"
+    git diff --cached --name-only | grep -E "${pattern}"
+    ERRORS=$((ERRORS + 1))
+  fi
+done
+
+# ---- 2. Scan staged file contents for common secret patterns
+while IFS= read -r file; do
+  [[ -f "${file}" ]] || continue
+  # Skip example files and docs
+  [[ "${file}" =~ \.example$|CLAUDE\.md|ARCHITECTURE\.md|RUNBOOKS\.md|TROUBLESHOOTING\.md|security-policy\.md ]] && continue
+
+  if grep -qiE '(password|secret_key|private_key|api_token)\s*=\s*[^"CHANGE_ME][^"]{8,}' "${file}" 2>/dev/null; then
+    echo -e "${YELLOW}[WARN]${NC} Possible secret value in staged file: ${file}"
+    grep -niE '(password|secret_key|private_key|api_token)\s*=\s*[^"CHANGE_ME][^"]{8,}' "${file}" | head -3
+    ERRORS=$((ERRORS + 1))
+  fi
+done < <(git diff --cached --name-only)
+
+# ---- 3. Block CHANGE_ME in non-example config files --------
+while IFS= read -r file; do
+  [[ -f "${file}" ]] || continue
+  [[ "${file}" =~ \.example$|CLAUDE\.md ]] && continue
+  [[ "${file}" =~ \.(tf|yml|yaml|sh|json|properties)$ ]] || continue
+
+  if grep -q "CHANGE_ME" "${file}" 2>/dev/null; then
+    echo -e "${YELLOW}[WARN]${NC} Unfilled placeholder CHANGE_ME in: ${file}"
+    grep -n "CHANGE_ME" "${file}" | head -3
+  fi
+done < <(git diff --cached --name-only)
+
+# ---- Result ------------------------------------------------
+if [[ ${ERRORS} -gt 0 ]]; then
+  echo ""
+  echo -e "${RED}Pre-commit: ${ERRORS} issue(s) found — commit blocked.${NC}"
+  echo -e "To bypass (emergency only): ${YELLOW}git commit --no-verify${NC}"
+  exit 1
+fi
+
+echo -e "${GREEN}Pre-commit: no secrets detected — commit allowed.${NC}"
+exit 0

@@ -1,0 +1,27 @@
+# ============================================================
+# Local development overrides — copy to docker-compose.override.yml
+# This file is gitignored. It exposes ports locally for debugging.
+# NEVER use this in production.
+# ============================================================
+
+services:
+  authentik-server:
+    ports:
+      - "127.0.0.1:9000:9000"   # Authentik web UI (local only)
+      - "127.0.0.1:9443:9443"   # Authentik HTTPS (local only)
+
+  guacamole:
+    ports:
+      - "127.0.0.1:8080:8080"   # Guacamole web UI (local only)
+
+  grafana:
+    ports:
+      - "127.0.0.1:3000:3000"   # Grafana (local only)
+
+  prometheus:
+    ports:
+      - "127.0.0.1:9090:9090"   # Prometheus (local only)
+
+  loki:
+    ports:
+      - "127.0.0.1:3100:3100"   # Loki (local only)

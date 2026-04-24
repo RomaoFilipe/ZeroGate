@@ -1,0 +1,23 @@
+# ============================================================
+# Terraform variables — copy to terraform.tfvars and fill values
+# terraform.tfvars is gitignored (may contain domain/email)
+# ============================================================
+
+aws_region    = "eu-west-1"
+environment   = "production"
+project_name  = "zerogate"
+instance_type = "t2.micro"
+volume_size_gb = 30
+
+# Your domain (e.g. "example.com")
+domain = "yourdomain.com"
+
+# Security contact for alerts
+admin_email = "security@yourdomain.com"
+
+# Optional — disable for dev/staging to save costs
+enable_guardduty  = true
+enable_cloudtrail = true
+
+# EBS snapshot retention (days)
+backup_retention_days = 7

@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(chmod +x /home/ubuntu/ZeroGate/scripts/*.sh /home/ubuntu/ZeroGate/docker/guacamole/init/init.sh)"
+    ]
+  }
+}

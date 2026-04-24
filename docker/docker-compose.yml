@@ -1,0 +1,465 @@
+# ============================================================
+# ZeroGate — Docker Compose Stack
+# All services are on an isolated internal network.
+# Only cloudflared connects to the internet (outbound only).
+# No ports are published to the host (0.0.0.0) — ever.
+# ============================================================
+
+name: zerogate
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+    tag: "{{.Name}}"
+
+x-restart: &always-restart
+  restart: unless-stopped
+
+x-healthcheck-defaults: &hc-defaults
+  interval: 30s
+  timeout: 10s
+  retries: 3
+  start_period: 40s
+
+services:
+
+  # ──────────────────────────────────────────────────────────
+  # CLOUDFLARE TUNNEL — outbound only, zero inbound
+  # ──────────────────────────────────────────────────────────
+  cloudflared:
+    image: cloudflare/cloudflared:2024.12.2
+    <<: *always-restart
+    command: tunnel --config /etc/cloudflared/config.yml run
+    volumes:
+      - ./cloudflared/config.yml:/etc/cloudflared/config.yml:ro
+      - ./cloudflared/credentials.json:/etc/cloudflared/credentials.json:ro
+    networks:
+      - zerogate-internal
+    depends_on:
+      authentik-server:
+        condition: service_healthy
+      guacamole:
+        condition: service_healthy
+      grafana:
+        condition: service_healthy
+    healthcheck:
+      <<: *hc-defaults
+      test: ["CMD", "cloudflared", "tunnel", "info"]
+    environment:
+      NO_AUTOUPDATE: "true"
+    logging: *default-logging
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+
+  # ──────────────────────────────────────────────────────────
+  # AUTHENTIK — Identity Provider & MFA
+  # ──────────────────────────────────────────────────────────
+  authentik-db:
+    image: postgres:16-alpine
+    <<: *always-restart
+    environment:
+      POSTGRES_DB: ${AUTHENTIK_DB_NAME:-authentik}
+      POSTGRES_USER: ${AUTHENTIK_DB_USER:-authentik}
+      POSTGRES_PASSWORD: ${AUTHENTIK_DB_PASSWORD}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - authentik-db-data:/var/lib/postgresql/data
+    networks:
+      - zerogate-internal
+    healthcheck:
+      <<: *hc-defaults
+      test: ["CMD-SHELL", "pg_isready -U ${AUTHENTIK_DB_USER:-authentik} -d ${AUTHENTIK_DB_NAME:-authentik}"]
+    logging: *default-logging
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+
+  authentik-redis:
+    image: redis:7-alpine
+    <<: *always-restart
+    command: >
+      redis-server
+      --requirepass ${AUTHENTIK_REDIS_PASSWORD}
+      --maxmemory 128mb
+      --maxmemory-policy allkeys-lru
+      --save 60 1
+      --appendonly yes
+    volumes:
+      - authentik-redis-data:/data
+    networks:
+      - zerogate-internal
+    healthcheck:
+      <<: *hc-defaults
+      test: ["CMD", "redis-cli", "-a", "${AUTHENTIK_REDIS_PASSWORD}", "ping"]
+    logging: *default-logging
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+
+  authentik-server:
+    image: ghcr.io/goauthentik/server:2024.12.3
+    <<: *always-restart
+    command: server
+    environment: &authentik-env
+      AUTHENTIK_REDIS__HOST: authentik-redis
+      AUTHENTIK_REDIS__PASSWORD: ${AUTHENTIK_REDIS_PASSWORD}
+      AUTHENTIK_POSTGRESQL__HOST: authentik-db
+      AUTHENTIK_POSTGRESQL__USER: ${AUTHENTIK_DB_USER:-authentik}
+      AUTHENTIK_POSTGRESQL__NAME: ${AUTHENTIK_DB_NAME:-authentik}
+      AUTHENTIK_POSTGRESQL__PASSWORD: ${AUTHENTIK_DB_PASSWORD}
+      AUTHENTIK_SECRET_KEY: ${AUTHENTIK_SECRET_KEY}
+      AUTHENTIK_ERROR_REPORTING__ENABLED: "false"
+      AUTHENTIK_DISABLE_UPDATE_CHECK: "true"
+      AUTHENTIK_DISABLE_STARTUP_ANALYTICS: "true"
+      AUTHENTIK_BOOTSTRAP_EMAIL: ${AUTHENTIK_BOOTSTRAP_EMAIL:-}
+      AUTHENTIK_BOOTSTRAP_PASSWORD: ${AUTHENTIK_BOOTSTRAP_PASSWORD:-}
+      AUTHENTIK_LOG_LEVEL: warning
+    volumes:
+      - authentik-media:/media
+      - ./authentik/custom-templates:/templates:ro
+    networks:
+      - zerogate-internal
+    depends_on:
+      authentik-db:
+        condition: service_healthy
+      authentik-redis:
+        condition: service_healthy
+    healthcheck:
+      <<: *hc-defaults
+      test: ["CMD-SHELL", "ak healthcheck || exit 1"]
+      start_period: 60s
+    logging: *default-logging
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+
+  authentik-worker:
+    image: ghcr.io/goauthentik/server:2024.12.3
+    <<: *always-restart
+    command: worker
+    environment: *authentik-env
+    volumes:
+      - authentik-media:/media
+      - ./authentik/custom-templates:/templates:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - zerogate-internal
+    depends_on:
+      authentik-db:
+        condition: service_healthy
+      authentik-redis:
+        condition: service_healthy
+    healthcheck:
+      <<: *hc-defaults
+      test: ["CMD-SHELL", "ak healthcheck || exit 1"]
+      start_period: 60s
+    logging: *default-logging
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+
+  # ──────────────────────────────────────────────────────────
+  # GUACAMOLE — clientless browser-based remote access
+  # ──────────────────────────────────────────────────────────
+  guacamole-db:
+    image: postgres:16-alpine
+    <<: *always-restart
+    environment:
+      POSTGRES_DB: ${GUACAMOLE_DB_NAME:-guacamole_db}
+      POSTGRES_USER: ${GUACAMOLE_DB_USER:-guacamole}
+      POSTGRES_PASSWORD: ${GUACAMOLE_DB_PASSWORD}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - guacamole-db-data:/var/lib/postgresql/data
+      - ./guacamole/init:/docker-entrypoint-initdb.d:ro
+    networks:
+      - zerogate-internal
+    healthcheck:
+      <<: *hc-defaults
+      test: ["CMD-SHELL", "pg_isready -U ${GUACAMOLE_DB_USER:-guacamole} -d ${GUACAMOLE_DB_NAME:-guacamole_db}"]
+    logging: *default-logging
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+
+  guacd:
+    image: guacamole/guacd:1.5.5
+    <<: *always-restart
+    networks:
+      - zerogate-internal
+    healthcheck:
+      <<: *hc-defaults
+      test: ["CMD-SHELL", "nc -z localhost 4822 || exit 1"]
+    logging: *default-logging
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+
+  guacamole:
+    image: guacamole/guacamole:1.5.5
+    <<: *always-restart
+    environment:
+      GUACD_HOSTNAME: guacd
+      GUACD_PORT: "4822"
+      POSTGRESQL_HOSTNAME: guacamole-db
+      POSTGRESQL_PORT: "5432"
+      POSTGRESQL_DATABASE: ${GUACAMOLE_DB_NAME:-guacamole_db}
+      POSTGRESQL_USER: ${GUACAMOLE_DB_USER:-guacamole}
+      POSTGRESQL_PASSWORD: ${GUACAMOLE_DB_PASSWORD}
+      POSTGRESQL_AUTO_CREATE_ACCOUNTS: "false"
+      # OIDC integration with Authentik
+      OPENID_AUTHORIZATION_ENDPOINT: ${AUTHENTIK_URL}/application/o/authorize/
+      OPENID_JWKS_ENDPOINT: ${AUTHENTIK_URL}/application/o/guacamole/jwks/
+      OPENID_ISSUER: ${AUTHENTIK_URL}/application/o/guacamole/
+      OPENID_CLIENT_ID: ${GUACAMOLE_OIDC_CLIENT_ID:-guacamole}
+      OPENID_REDIRECT_URI: ${GUACAMOLE_URL}/guacamole/
+      OPENID_USERNAME_CLAIM_TYPE: preferred_username
+      OPENID_GROUPS_CLAIM_TYPE: groups
+      # Security hardening
+      API_SESSION_TIMEOUT: "60"
+      EXTENSION_PRIORITY: openid
+    networks:
+      - zerogate-internal
+    depends_on:
+      guacamole-db:
+        condition: service_healthy
+      guacd:
+        condition: service_healthy
+    healthcheck:
+      <<: *hc-defaults
+      test: ["CMD-SHELL", "curl -fs http://localhost:8080/guacamole/ | grep -q 'guacamole' || exit 1"]
+      start_period: 60s
+    logging: *default-logging
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+
+  # ──────────────────────────────────────────────────────────
+  # OBSERVABILITY — Loki + Prometheus + Grafana + Promtail
+  # ──────────────────────────────────────────────────────────
+  loki:
+    image: grafana/loki:3.3.2
+    <<: *always-restart
+    command: -config.file=/etc/loki/loki-config.yml
+    volumes:
+      - ./observability/loki/loki-config.yml:/etc/loki/loki-config.yml:ro
+      - loki-data:/loki
+    networks:
+      - zerogate-internal
+    healthcheck:
+      <<: *hc-defaults
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3100/ready | grep -q ready || exit 1"]
+    logging: *default-logging
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+
+  promtail:
+    image: grafana/promtail:3.3.2
+    <<: *always-restart
+    command: -config.file=/etc/promtail/promtail-config.yml
+    volumes:
+      - ./observability/promtail/promtail-config.yml:/etc/promtail/promtail-config.yml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+    networks:
+      - zerogate-internal
+    depends_on:
+      loki:
+        condition: service_healthy
+    logging: *default-logging
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          memory: 128m
+
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    <<: *always-restart
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=30d
+      - --storage.tsdb.retention.size=5GB
+      - --web.enable-lifecycle
+      - --web.console.libraries=/usr/share/prometheus/console_libraries
+      - --web.console.templates=/usr/share/prometheus/consoles
+    volumes:
+      - ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./observability/prometheus/rules:/etc/prometheus/rules:ro
+      - prometheus-data:/prometheus
+    networks:
+      - zerogate-internal
+    healthcheck:
+      <<: *hc-defaults
+      test: ["CMD-SHELL", "wget -qO- http://localhost:9090/-/healthy | grep -q 'Prometheus' || exit 1"]
+    logging: *default-logging
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+
+  grafana:
+    image: grafana/grafana:11.4.0
+    <<: *always-restart
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
+      GF_SECURITY_SECRET_KEY: ${GRAFANA_SECRET_KEY}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_USERS_ALLOW_ORG_CREATE: "false"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      # OIDC with Authentik
+      GF_AUTH_GENERIC_OAUTH_ENABLED: "true"
+      GF_AUTH_GENERIC_OAUTH_NAME: "Authentik"
+      GF_AUTH_GENERIC_OAUTH_CLIENT_ID: grafana
+      GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET: ${GRAFANA_OIDC_CLIENT_SECRET:-CHANGE_ME}
+      GF_AUTH_GENERIC_OAUTH_SCOPES: "openid profile email"
+      GF_AUTH_GENERIC_OAUTH_AUTH_URL: ${AUTHENTIK_URL}/application/o/authorize/
+      GF_AUTH_GENERIC_OAUTH_TOKEN_URL: ${AUTHENTIK_URL}/application/o/token/
+      GF_AUTH_GENERIC_OAUTH_API_URL: ${AUTHENTIK_URL}/application/o/userinfo/
+      GF_AUTH_GENERIC_OAUTH_ROLE_ATTRIBUTE_PATH: "contains(groups[*], 'grafana-admin') && 'Admin' || 'Viewer'"
+      GF_AUTH_SIGNOUT_REDIRECT_URL: ${AUTHENTIK_URL}/application/o/grafana/end-session/
+      # Security headers
+      GF_SECURITY_COOKIE_SECURE: "true"
+      GF_SECURITY_COOKIE_SAMESITE: lax
+      GF_SECURITY_CONTENT_SECURITY_POLICY: "true"
+      GF_SECURITY_STRICT_TRANSPORT_SECURITY: "true"
+      # Alerting
+      GF_SMTP_ENABLED: ${SMTP_ENABLED:-false}
+      GF_SMTP_HOST: ${SMTP_HOST:-}:${SMTP_PORT:-587}
+      GF_SMTP_USER: ${SMTP_USER:-}
+      GF_SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      GF_SMTP_FROM_ADDRESS: ${SMTP_FROM:-alerts@yourdomain.com}
+      GF_ALERTING_ENABLED: "true"
+      GF_UNIFIED_ALERTING_ENABLED: "true"
+      GF_LOG_LEVEL: warn
+    volumes:
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    networks:
+      - zerogate-internal
+    depends_on:
+      loki:
+        condition: service_healthy
+      prometheus:
+        condition: service_healthy
+    healthcheck:
+      <<: *hc-defaults
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/api/health | grep -q '\"ok\"' || exit 1"]
+    logging: *default-logging
+    security_opt:
+      - no-new-privileges:true
+    user: "472" # grafana UID
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+
+  # Host metrics (CPU, mem, disk, network)
+  node-exporter:
+    image: prom/node-exporter:v1.8.2
+    <<: *always-restart
+    command:
+      - --path.procfs=/host/proc
+      - --path.rootfs=/rootfs
+      - --path.sysfs=/host/sys
+      - --collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    networks:
+      - zerogate-internal
+    pid: host
+    logging: *default-logging
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          memory: 64m
+
+  # Container metrics
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    <<: *always-restart
+    command:
+      - --docker_only=true
+      - --disable_metrics=accelerator,advtcp,cpuset,hugetlb,memory_numa,referenced_memory,resctrl,sched,tcp,udp
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker:/var/lib/docker:ro
+    networks:
+      - zerogate-internal
+    logging: *default-logging
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          memory: 128m
+
+networks:
+  zerogate-internal:
+    driver: bridge
+    name: zerogate-internal
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+    driver_opts:
+      com.docker.network.bridge.name: zg-internal
+      com.docker.network.bridge.enable_icc: "true"
+      com.docker.network.bridge.enable_ip_masquerade: "true"
+
+volumes:
+  authentik-db-data:
+    name: zerogate-authentik-db
+  authentik-redis-data:
+    name: zerogate-authentik-redis
+  authentik-media:
+    name: zerogate-authentik-media
+  guacamole-db-data:
+    name: zerogate-guacamole-db
+  loki-data:
+    name: zerogate-loki
+  prometheus-data:
+    name: zerogate-prometheus
+  grafana-data:
+    name: zerogate-grafana

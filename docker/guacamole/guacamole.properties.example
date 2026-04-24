@@ -1,0 +1,18 @@
+# ============================================================
+# Guacamole properties — copy to guacamole.properties
+# This file is gitignored.
+# Most settings are provided via environment variables in
+# docker-compose.yml — only put overrides here if needed.
+# ============================================================
+
+# Session timeout (minutes)
+api-session-timeout: 60
+
+# Maximum number of connections per user
+max-connections-per-user: 5
+
+# Require hostname verification for TLS connections
+ssl-protocol: TLSv1.2,TLSv1.3
+
+# Clipboard integration (disabled for security — re-enable per policy)
+# Note: controlled at the connection group level in the admin UI

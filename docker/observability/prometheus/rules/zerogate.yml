@@ -1,0 +1,122 @@
+groups:
+  - name: zerogate.host
+    interval: 30s
+    rules:
+      # ---- Host resource alerts ----------------------------
+      - alert: HostHighCpuLoad
+        expr: 100 - (avg(irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Host CPU load above 80%"
+          description: "CPU usage is {{ printf \"%.1f\" $value }}% for more than 5 minutes."
+
+      - alert: HostOutOfMemory
+        expr: (1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) * 100 > 85
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Host memory usage above 85%"
+          description: "{{ printf \"%.1f\" $value }}% of memory used. Check for memory leaks."
+
+      - alert: HostDiskUsageHigh
+        expr: (1 - node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) * 100 > 80
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Disk usage above 80%"
+          description: "Root filesystem is {{ printf \"%.1f\" $value }}% full."
+
+      - alert: HostDiskUsageCritical
+        expr: (1 - node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) * 100 > 90
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Disk usage above 90% — CRITICAL"
+          description: "Root filesystem is {{ printf \"%.1f\" $value }}% full. Immediate action required."
+
+      - alert: HostNetworkReceiveErrors
+        expr: irate(node_network_receive_errs_total[5m]) > 10
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High network receive errors"
+          description: "{{ $value }} receive errors/s on {{ $labels.device }}"
+
+  - name: zerogate.containers
+    interval: 30s
+    rules:
+      # ---- Container health --------------------------------
+      - alert: ContainerHighMemory
+        expr: >
+          (container_memory_usage_bytes{container_label_com_docker_compose_project="zerogate"}
+          / container_spec_memory_limit_bytes{container_label_com_docker_compose_project="zerogate"}) * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Container {{ $labels.container_label_com_docker_compose_service }} memory above 85% of limit"
+          description: "Memory usage: {{ printf \"%.1f\" $value }}%"
+
+      - alert: ContainerRestarting
+        expr: >
+          increase(container_start_time_seconds{
+            container_label_com_docker_compose_project="zerogate",
+            container_label_com_docker_compose_service=~"authentik-server|authentik-worker|guacamole|cloudflared|authentik-db|guacamole-db"
+          }[15m]) > 1
+        for: 0m
+        labels:
+          severity: high
+        annotations:
+          summary: "Critical container {{ $labels.container_label_com_docker_compose_service }} is restarting"
+          description: "Container restarted {{ $value }} time(s) in the last 15 minutes."
+
+      - alert: ContainerAbsent
+        expr: >
+          absent(container_last_seen{
+            container_label_com_docker_compose_service=~"cloudflared|authentik-server|guacamole"
+          })
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Critical container is absent"
+          description: "Container {{ $labels.container_label_com_docker_compose_service }} has disappeared."
+
+  - name: zerogate.loki
+    interval: 60s
+    rules:
+      # ---- Loki health -------------------------------------
+      - alert: LokiRequestErrors
+        expr: >
+          100 * sum(rate(loki_request_duration_seconds_count{status_code=~"5.."}[5m])) by (route)
+          / sum(rate(loki_request_duration_seconds_count[5m])) by (route) > 10
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Loki has high error rate on {{ $labels.route }}"
+          description: "{{ printf \"%.1f\" $value }}% of requests are failing."
+
+  - name: zerogate.recording
+    interval: 30s
+    rules:
+      # ---- Recording rules (pre-aggregated metrics for dashboards) ----
+      - record: zerogate:cpu_usage:rate5m
+        expr: 100 - (avg(irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100)
+
+      - record: zerogate:memory_usage_percent
+        expr: (1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) * 100
+
+      - record: zerogate:disk_usage_percent
+        expr: (1 - node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) * 100
+
+      - record: zerogate:container_memory_percent
+        expr: >
+          (container_memory_usage_bytes{container_label_com_docker_compose_project="zerogate"}
+          / container_spec_memory_limit_bytes{container_label_com_docker_compose_project="zerogate"}) * 100

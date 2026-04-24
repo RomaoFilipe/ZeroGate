@@ -16,21 +16,12 @@ terraform {
     }
   }
 
-  # Uncomment after creating the S3 bucket and DynamoDB table manually (one-time):
-  #   aws s3api create-bucket --bucket zerogate-tfstate-<ACCOUNT_ID> \
-  #     --region eu-west-1 --create-bucket-configuration LocationConstraint=eu-west-1
-  #   aws s3api put-bucket-versioning --bucket zerogate-tfstate-<ACCOUNT_ID> \
-  #     --versioning-configuration Status=Enabled
-  #   aws s3api put-bucket-encryption --bucket zerogate-tfstate-<ACCOUNT_ID> \
-  #     --server-side-encryption-configuration \
-  #     '{"Rules":[{"ApplyServerSideEncryptionByDefault":{"SSEAlgorithm":"AES256"}}]}'
-  #   aws dynamodb create-table --table-name zerogate-tfstate-lock \
-  #     --attribute-definitions AttributeName=LockID,AttributeType=S \
-  #     --key-schema AttributeName=LockID,KeyType=HASH \
-  #     --billing-mode PAY_PER_REQUEST --region eu-west-1
-
+  # Remote state backend — activated by: make backend-init
+  # That script creates the S3 bucket + DynamoDB table and writes this block.
+  # Do not edit manually — run make backend-init instead.
+  #
   # backend "s3" {
-  #   bucket         = "zerogate-tfstate-<ACCOUNT_ID>"
+  #   bucket         = "zerogate-tfstate-<ACCOUNT_ID>"   # filled by make backend-init
   #   key            = "zerogate/terraform.tfstate"
   #   region         = "eu-west-1"
   #   dynamodb_table = "zerogate-tfstate-lock"

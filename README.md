@@ -736,6 +736,70 @@ Session Recording
 
 ---
 
+### Phase 6 — High Availability (v2.0)
+
+**Goal:** RDS Multi-AZ databases, cloudflared ASG, Terraform remote state, DR runbook.
+**Duration:** ~1 hour (Terraform apply ~15 min, RDS provisioning ~10 min)
+
+```bash
+# Step 1: Migrate Terraform state to S3 (one-time — do first)
+make backend-init
+
+# Step 2: Enable RDS + cloudflared ASG in terraform.tfvars
+#   enable_rds             = true
+#   enable_cloudflared_asg = true
+# Then provision:
+make ha-plan    # review before applying
+make ha-apply
+
+# Step 3: Initialise Guacamole schema on RDS (one-time)
+make ha-guac-init
+
+# Step 4: Re-run bootstrap to pull RDS endpoints into .env
+make ssm        # open SSM session
+# In the session:
+./scripts/bootstrap.sh
+
+# Step 5: Start the stack in HA mode
+make ha-up
+
+# Step 6: Verify everything healthy
+make health
+make dr-status
+```
+
+**Production checklist for v2.0:**
+
+```
+Terraform Remote State
+  [ ] make backend-init completed — state is in s3://zerogate-tfstate-<ACCOUNT_ID>/
+  [ ] DynamoDB lock table created: zerogate-tfstate-lock
+  [ ] State migration verified: terraform state list succeeds with remote backend
+
+RDS Multi-AZ
+  [ ] make ha-apply completed — both RDS instances show "available" in AWS console
+  [ ] RDS Multi-AZ=true confirmed: aws rds describe-db-instances --query '..MultiAZ..'
+  [ ] Guacamole schema initialised: make ha-guac-init (verify no errors)
+  [ ] .env updated by bootstrap.sh: AUTHENTIK_DB_HOST, GUACAMOLE_DB_HOST set to RDS endpoints
+  [ ] make ha-up successful — no local authentik-db or guacamole-db containers running
+  [ ] make health passes — Authentik, Guacamole, Grafana all healthy against RDS
+
+cloudflared ASG
+  [ ] ASG shows desired=2, min=2, 2 healthy instances across 2 AZs
+  [ ] Tunnel shows 3 connectors (1 main EC2 + 2 ASG nodes): make tunnel-info
+  [ ] Test: terminate one ASG node — ASG replaces it within 2 min
+  [ ] Verify user access uninterrupted during replacement
+
+Disaster Recovery
+  [ ] make dr-status returns health for all components
+  [ ] make dr-failover COMPONENT=rds-authentik tested — applications reconnected
+  [ ] make dr-failover COMPONENT=asg-refresh tested — rolling refresh completed
+  [ ] docs/dr-test-log.txt updated with test date and measured RTO
+  [ ] DR runbook reviewed: docs/DISASTER-RECOVERY.md
+```
+
+---
+
 ## Configuration Reference
 
 ### Environment Variables
@@ -1297,17 +1361,17 @@ v1.1 — Security Hardening (done)
   [x] Geo-blocking: Cloudflare WAF rules via Terraform (block list + strict allow-list mode)
   [x] Automated threat response: threat-watcher bans repeat-failure IPs via Cloudflare API
 
-v1.2 — Access Enhancements (current)
+v1.2 — Access Enhancements (done)
   [x] SCIM v2.0 inbound provisioning from HR systems (Okta, Azure AD, Workday)
   [x] SAML 2.0 SP federation with Azure AD and Okta (attribute + group mappings)
   [x] Time-based access: Mon–Fri 08:00–18:00 expression policy + on-call bypass group
   [x] Per-connection session recording (.guac files → S3 archive with AES-256 encryption)
 
-v2.0 — High Availability
-  [ ] Multi-AZ deployment (RDS for Authentik/Guacamole DBs)
-  [ ] Auto Scaling Group for cloudflared tunnel nodes
-  [ ] Terraform remote state in S3 + DynamoDB locking
-  [ ] Disaster recovery: automated failover runbook
+v2.0 — High Availability (current)
+  [x] Multi-AZ RDS for Authentik + Guacamole (synchronous standby, auto-failover 60-120s)
+  [x] Auto Scaling Group for cloudflared tunnel nodes (t3.nano ×2, multi-AZ, CPU-based scaling)
+  [x] Terraform remote state in S3 + DynamoDB locking (make backend-init)
+  [x] Disaster recovery runbook: RDS failover, ASG rolling refresh, state restore, region failover
 
 v3.0 — On-Premise Option
   [ ] Bare metal / on-premise deployment guide

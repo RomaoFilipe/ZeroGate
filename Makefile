@@ -186,3 +186,74 @@ check-secrets: ## Verify no secrets are staged for git commit
 	@git diff --cached --name-only 2>/dev/null | xargs -I{} sh -c \
 	  'grep -lE "(password|secret|token|private_key)\s*=" "{}" 2>/dev/null && echo "WARNING: {} may contain secrets"' || true
 	@echo "Scan complete."
+
+# ── v2.0: High Availability ──────────────────────────────────
+backend-init: ## Create S3 + DynamoDB Terraform remote state and migrate local state
+	./scripts/init-backend.sh --region $(AWS_REGION)
+
+backend-init-dry: ## Dry-run backend init (shows what would be created)
+	./scripts/init-backend.sh --region $(AWS_REGION) --dry-run
+
+ha-plan: ## Plan HA infrastructure (RDS + ASG)
+	cd infrastructure && terraform plan \
+	  -var-file=terraform.tfvars \
+	  -var enable_rds=true \
+	  -var enable_cloudflared_asg=true
+
+ha-apply: ## Provision RDS Multi-AZ + cloudflared ASG
+	cd infrastructure && terraform apply \
+	  -var-file=terraform.tfvars \
+	  -var enable_rds=true \
+	  -var enable_cloudflared_asg=true
+
+ha-guac-init: ## Initialise Guacamole schema on RDS (run once after ha-apply)
+	@RDS_HOST=$$(cd infrastructure && terraform output -raw rds_guacamole_endpoint); \
+	  GUAC_PASS=$$(aws secretsmanager get-secret-value \
+	    --secret-id $$(cd infrastructure && terraform output -raw rds_secret_arn) \
+	    --query SecretString --output text \
+	    | python3 -c "import sys,json; print(json.load(sys.stdin)['GUACAMOLE_DB_PASSWORD'])"); \
+	  docker run --rm guacamole/guacamole:1.5.5 \
+	    /opt/guacamole/bin/initdb.sh --postgresql \
+	  | PGPASSWORD="$$GUAC_PASS" psql \
+	    -h "$$RDS_HOST" -U guacamole_user -d guacamole_db
+
+ha-up: ## Start Docker Compose stack in HA mode (requires RDS + bootstrap.sh re-run)
+	cd $(COMPOSE_DIR) && docker compose -f docker-compose.yml -f docker-compose.ha.yml up -d
+
+ha-down: ## Stop HA stack
+	cd $(COMPOSE_DIR) && docker compose -f docker-compose.yml -f docker-compose.ha.yml down
+
+ha-status: ## Show running services in HA mode
+	cd $(COMPOSE_DIR) && docker compose -f docker-compose.yml -f docker-compose.ha.yml ps
+
+# ── v2.0: Disaster Recovery ──────────────────────────────────
+dr-status: ## Show health of all HA components (RDS, ASG, EC2)
+	./scripts/failover.sh --status
+
+dr-failover: ## Trigger failover for a component: make dr-failover COMPONENT=rds-authentik
+	@[[ -n "$(COMPONENT)" ]] || { echo "Usage: make dr-failover COMPONENT=rds-authentik|rds-guacamole|asg-refresh|ec2"; exit 1; }
+	./scripts/failover.sh --component $(COMPONENT)
+
+dr-failover-dry: ## Dry-run failover (shows action without executing)
+	@[[ -n "$(COMPONENT)" ]] || { echo "Usage: make dr-failover-dry COMPONENT=rds-authentik"; exit 1; }
+	./scripts/failover.sh --component $(COMPONENT) --dry-run
+
+dr-asg-refresh: ## Rolling refresh of cloudflared ASG nodes (zero downtime)
+	./scripts/failover.sh --component asg-refresh
+
+dr-test: ## Run quarterly DR test procedure (RDS failover → health check → ASG refresh)
+	@echo "=== ZeroGate Access DR Test — $$(date -u) ==="
+	./scripts/failover.sh --status
+	@echo ""
+	@echo "--- Triggering RDS Authentik failover ---"
+	./scripts/failover.sh --component rds-authentik
+	@echo "Waiting 3 minutes for failover to complete..."
+	@sleep 180
+	@echo "--- Triggering RDS Guacamole failover ---"
+	./scripts/failover.sh --component rds-guacamole
+	@sleep 180
+	@echo "--- Health check ---"
+	./scripts/health-check.sh
+	@echo "--- ASG rolling refresh ---"
+	./scripts/failover.sh --component asg-refresh
+	@echo "=== DR test complete. Log the result in docs/dr-test-log.txt ==="

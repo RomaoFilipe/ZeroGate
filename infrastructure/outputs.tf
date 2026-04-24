@@ -57,3 +57,30 @@ output "cloudtrail_bucket" {
   description = "S3 bucket storing CloudTrail logs"
   value       = var.enable_cloudtrail ? aws_s3_bucket.cloudtrail[0].bucket : "CloudTrail disabled"
 }
+
+# ── v2.0 HA outputs ──────────────────────────────────────────
+
+output "rds_authentik_endpoint" {
+  description = "RDS endpoint for Authentik database (empty if enable_rds = false)"
+  value       = var.enable_rds ? aws_db_instance.authentik[0].address : "RDS disabled — using local Docker postgres"
+}
+
+output "rds_guacamole_endpoint" {
+  description = "RDS endpoint for Guacamole database (empty if enable_rds = false)"
+  value       = var.enable_rds ? aws_db_instance.guacamole[0].address : "RDS disabled — using local Docker postgres"
+}
+
+output "rds_secret_arn" {
+  description = "Secrets Manager ARN containing RDS endpoints and credentials"
+  value       = var.enable_rds ? aws_secretsmanager_secret.rds[0].arn : "RDS disabled"
+}
+
+output "cloudflared_asg_name" {
+  description = "Auto Scaling Group name for cloudflared nodes (empty if disabled)"
+  value       = var.enable_cloudflared_asg ? aws_autoscaling_group.cloudflared[0].name : "ASG disabled"
+}
+
+output "backend_init_command" {
+  description = "Command to create the S3 + DynamoDB backend resources and migrate state"
+  value       = "make backend-init AWS_REGION=${var.aws_region}"
+}

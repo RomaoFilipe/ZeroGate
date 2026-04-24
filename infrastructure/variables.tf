@@ -132,6 +132,82 @@ variable "allowed_countries_only" {
   default     = false
 }
 
+# ============================================================
+# v2.0 — High Availability
+# ============================================================
+
+variable "enable_rds" {
+  description = "Enable RDS Multi-AZ PostgreSQL for Authentik and Guacamole (replaces Docker containers)"
+  type        = bool
+  default     = false
+}
+
+variable "rds_instance_class" {
+  description = "RDS instance class (db.t3.micro = ~$25/month; db.t3.small for production)"
+  type        = string
+  default     = "db.t3.micro"
+}
+
+variable "rds_multi_az" {
+  description = "Enable Multi-AZ standby for RDS — automatic failover in 60-120s with no data loss"
+  type        = bool
+  default     = true
+}
+
+variable "rds_storage_gb" {
+  description = "Allocated storage for each RDS instance in GB"
+  type        = number
+  default     = 20
+}
+
+variable "private_subnet_cidr_a" {
+  description = "CIDR for private subnet in AZ-a (RDS primary — no internet access)"
+  type        = string
+  default     = "10.0.10.0/24"
+}
+
+variable "private_subnet_cidr_b" {
+  description = "CIDR for private subnet in AZ-b (RDS standby — no internet access)"
+  type        = string
+  default     = "10.0.11.0/24"
+}
+
+variable "enable_cloudflared_asg" {
+  description = "Enable Auto Scaling Group for cloudflared tunnel nodes (2+ connectors, multi-AZ)"
+  type        = bool
+  default     = false
+}
+
+variable "cloudflared_asg_min" {
+  description = "Minimum cloudflared ASG node count"
+  type        = number
+  default     = 2
+}
+
+variable "cloudflared_asg_max" {
+  description = "Maximum cloudflared ASG node count"
+  type        = number
+  default     = 5
+}
+
+variable "cloudflared_asg_desired" {
+  description = "Desired cloudflared ASG node count"
+  type        = number
+  default     = 2
+}
+
+variable "public_subnet_cidr_b" {
+  description = "CIDR for second public subnet in AZ-b (cloudflared ASG multi-AZ)"
+  type        = string
+  default     = "10.0.2.0/24"
+}
+
+variable "tfstate_bucket" {
+  description = "S3 bucket name for Terraform remote state (populated by make backend-init)"
+  type        = string
+  default     = ""
+}
+
 locals {
   name_prefix = "${var.project_name}-${var.environment}"
   az          = var.availability_zone != "" ? var.availability_zone : "${var.aws_region}a"

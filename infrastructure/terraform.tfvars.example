@@ -43,3 +43,29 @@ block_countries = ["RU", "CN", "KP", "IR", "BY", "SY"]
 # Allowed countries (used only when allowed_countries_only = true)
 allowed_countries      = ["PT", "GB", "DE", "FR", "NL", "ES", "US", "IE"]
 allowed_countries_only = false
+
+# ── v2.0: High Availability ───────────────────────────────────
+# RDS Multi-AZ — replaces local Docker postgres containers.
+# Cost: ~$50-100/month (two db.t3.micro instances with multi_az).
+# Set to false for dev/staging or if on a budget (use local postgres).
+enable_rds        = false
+rds_instance_class = "db.t3.micro"
+rds_multi_az      = true   # set false to save cost in dev (single-AZ)
+rds_storage_gb    = 20
+
+# Private subnet CIDRs for RDS (must not overlap vpc_cidr subnets above)
+private_subnet_cidr_a = "10.0.10.0/24"
+private_subnet_cidr_b = "10.0.11.0/24"
+
+# cloudflared Auto Scaling Group — multiple tunnel connectors across 2 AZs.
+# Cost: ~$10/month (two t3.nano instances).
+enable_cloudflared_asg  = false
+cloudflared_asg_min     = 2
+cloudflared_asg_max     = 5
+cloudflared_asg_desired = 2
+
+# Second public subnet for cloudflared ASG multi-AZ
+public_subnet_cidr_b = "10.0.2.0/24"
+
+# Terraform remote state — set by make backend-init (do not edit manually)
+# tfstate_bucket = "zerogate-tfstate-<ACCOUNT_ID>"

@@ -1,0 +1,69 @@
+# ============================================================
+# ZeroGate Access — High Availability override (v2.0)
+#
+# Removes local DB containers and points Authentik + Guacamole
+# at RDS Multi-AZ endpoints stored in .env by bootstrap.sh.
+#
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.ha.yml up -d
+#   # or: make ha-up
+#
+# Prerequisites (run once):
+#   1. make ha-apply            (provision RDS via Terraform)
+#   2. make ha-guac-init        (initialise Guacamole schema on RDS)
+#   3. make ssm + ./scripts/bootstrap.sh  (re-runs bootstrap to pull RDS
+#      endpoints from Secrets Manager into .env)
+#
+# The .env file must contain (bootstrap.sh sets these from Secrets Manager):
+#   AUTHENTIK_DB_HOST  AUTHENTIK_DB_PORT  AUTHENTIK_DB_NAME
+#   AUTHENTIK_DB_USER  AUTHENTIK_DB_PASSWORD
+#   GUACAMOLE_DB_HOST  GUACAMOLE_DB_PORT  GUACAMOLE_DB_NAME
+#   GUACAMOLE_DB_USER  GUACAMOLE_DB_PASSWORD
+# ============================================================
+
+services:
+
+  # ── Disable local databases (RDS replaces them) ────────────
+  # Adding a profile means these services only start when
+  # --profile ha-disabled is passed explicitly — which never happens.
+  authentik-db:
+    profiles: [ha-disabled]
+
+  guacamole-db:
+    profiles: [ha-disabled]
+
+  # ── Authentik server — use RDS endpoint ───────────────────
+  authentik-server:
+    environment:
+      AUTHENTIK_POSTGRESQL__HOST: ${AUTHENTIK_DB_HOST}
+      AUTHENTIK_POSTGRESQL__PORT: ${AUTHENTIK_DB_PORT:-5432}
+      AUTHENTIK_POSTGRESQL__NAME: ${AUTHENTIK_DB_NAME:-authentik}
+      AUTHENTIK_POSTGRESQL__USER: ${AUTHENTIK_DB_USER:-authentik}
+      AUTHENTIK_POSTGRESQL__PASSWORD: ${AUTHENTIK_DB_PASSWORD}
+    depends_on:
+      authentik-redis:
+        condition: service_healthy
+
+  # ── Authentik worker — same RDS endpoint ──────────────────
+  authentik-worker:
+    environment:
+      AUTHENTIK_POSTGRESQL__HOST: ${AUTHENTIK_DB_HOST}
+      AUTHENTIK_POSTGRESQL__PORT: ${AUTHENTIK_DB_PORT:-5432}
+      AUTHENTIK_POSTGRESQL__NAME: ${AUTHENTIK_DB_NAME:-authentik}
+      AUTHENTIK_POSTGRESQL__USER: ${AUTHENTIK_DB_USER:-authentik}
+      AUTHENTIK_POSTGRESQL__PASSWORD: ${AUTHENTIK_DB_PASSWORD}
+    depends_on:
+      authentik-redis:
+        condition: service_healthy
+
+  # ── Guacamole — use RDS endpoint ──────────────────────────
+  guacamole:
+    environment:
+      POSTGRES_HOSTNAME: ${GUACAMOLE_DB_HOST}
+      POSTGRES_PORT: ${GUACAMOLE_DB_PORT:-5432}
+      POSTGRES_DATABASE: ${GUACAMOLE_DB_NAME:-guacamole_db}
+      POSTGRES_USER: ${GUACAMOLE_DB_USER:-guacamole_user}
+      POSTGRES_PASSWORD: ${GUACAMOLE_DB_PASSWORD}
+    depends_on:
+      guacd:
+        condition: service_healthy

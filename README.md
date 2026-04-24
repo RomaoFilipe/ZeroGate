@@ -632,6 +632,110 @@ CI / GitOps
 
 ---
 
+### Phase 5 — Enterprise Access (v1.2)
+
+**Goal:** SCIM provisioning, SAML federation, time-based policies, session recording.
+**Duration:** ~2 hours
+
+```bash
+# Apply all v1.2 blueprints to Authentik
+make scim-apply
+make saml-apply
+
+# Enable session recording on all Guacamole connections
+make recording-enable
+```
+
+**SCIM setup (HR system → Authentik):**
+
+```
+1. Authentik Admin → Directory → Tokens → Create (Intent: API)
+2. Copy the token
+3. In your HR system (Okta / Azure AD / Workday):
+     SCIM Endpoint: https://auth.yourdomain.com/source/scim/hr-scim/v2/
+     Auth Header:   Authorization: Bearer <token>
+     Push:          Users + Groups
+
+New users pushed via SCIM receive a password-setup invitation email.
+MFA enrollment is required on first login.
+```
+
+**SAML federation setup (Azure AD / Okta → Authentik):**
+
+```bash
+# 1. Edit blueprint with IdP URLs before applying
+#    docker/authentik/blueprints/zerogate-saml.yaml:
+#      sso_url, slo_url, issuer, sp_binding
+
+make saml-apply
+
+# 2. Get your SP metadata URL to paste into the IdP
+make saml-metadata
+# → https://auth.yourdomain.com/source/saml/enterprise-idp/metadata/
+
+# 3. In Azure AD / Okta:
+#    - Paste ACS URL and Entity ID
+#    - Download their signing certificate
+#    - Import certificate: Authentik Admin → Certificates → Import
+#    - Enable the source in: Authentik Admin → Directory → Federation & Social Login
+```
+
+**Time-based access policy:**
+
+```
+Apply blueprint (already included in make scim-apply via zerogate-flows.yaml).
+
+To attach to a flow:
+  Authentik Admin → Flows → [flow] → Policy Bindings → Create
+  → Policy → zerogate-business-hours → Order: 0
+
+To add on-call bypass:
+  Authentik Admin → Directory → Groups → business-hours-exempt → Add member
+```
+
+**Session recording:**
+
+```bash
+# Enable on all connections (idempotent — safe to re-run)
+make recording-enable
+
+# Verify recording is configured
+make recording-enable-dry  # shows the SQL that was applied
+
+# Check recordings are being created after a test session
+make recording-list
+```
+
+**Production checklist for v1.2:**
+
+```
+SCIM
+  [ ] SCIM token created in Authentik and saved in a password manager
+  [ ] HR system test push completed: user appeared in Authentik within 60s
+  [ ] Deprovisioned user test: SCIM DELETE removed from Authentik
+
+SAML
+  [ ] IdP signing certificate imported in Authentik
+  [ ] IdP-initiated SSO tested (user clicks app tile in Okta/Azure AD)
+  [ ] SP-initiated SSO tested (user goes to auth.yourdomain.com directly)
+  [ ] Attribute mapping verified: email, name, groups all arrive correctly
+  [ ] New federated user enrolled MFA on first login
+
+Time-Based Access
+  [ ] zerogate-business-hours policy bound to authentication flow
+  [ ] Tested: access denied outside business hours (verify message shown)
+  [ ] Tested: on-call user in business-hours-exempt bypasses restriction
+
+Session Recording
+  [ ] make recording-enable ran and verified with make recording-enable-dry
+  [ ] Test session completed: make recording-list shows the .guac file
+  [ ] Retention policy configured: RECORDING_RETENTION_DAYS in docker/.env
+  [ ] S3 archive tested: make recording-archive DAYS=0 (uploads all, use dev bucket)
+  [ ] guacenc available for playback if incident review is needed
+```
+
+---
+
 ## Configuration Reference
 
 ### Environment Variables
@@ -1124,16 +1228,33 @@ security-gate      → Depends on all above (merge blocker)
 ### Production Checklist
 
 ```
-Before going live:
+v1.0 — Foundation
   [ ] All CHANGE_ME values replaced in docker/.env
-  [ ] Authentik blueprint applied (MFA + password policy)
+  [ ] Authentik blueprint applied (MFA + password policy + groups)
   [ ] SMTP configured for alert emails
   [ ] make audit passes with zero failures
   [ ] make health shows all services healthy
   [ ] Access tested: browser → Cloudflare → Authentik → MFA → Guacamole
-  [ ] Grafana alerts firing test completed
-  [ ] Backup tested: make backup + restore from snapshot documented
+  [ ] Grafana alerts firing test completed (use test alert button)
+  [ ] Backup tested: make backup + restore from EBS snapshot documented
   [ ] make ssm-tunnel-* commands bookmarked for emergency access
+
+v1.1 — Security Hardening
+  [ ] WebAuthn device enrolled by at least one user (test Face ID / YubiKey)
+  [ ] enable_geo_blocking = true in terraform.tfvars + make apply
+  [ ] CF_API_TOKEN set in docker/.env (required by threat-watcher)
+  [ ] make threat-dry-run shows IPs that would be banned
+  [ ] Device posture: WARP client installed on one test device and verified
+  [ ] Grafana: distributed-attack and ip-auto-banned alerts tested
+
+v1.2 — Access Enhancements
+  [ ] make scim-apply + make saml-apply ran without errors
+  [ ] SCIM token created and configured in HR system; test user pushed
+  [ ] SAML IdP certificate imported in Authentik; IdP-initiated SSO tested
+  [ ] zerogate-business-hours policy bound to authentication flow
+  [ ] make recording-enable ran; test session recorded and visible in make recording-list
+  [ ] Recording retention and S3 archive configured (RECORDING_RETENTION_DAYS)
+  [ ] On-call bypass tested: user in business-hours-exempt accesses outside hours
 ```
 
 ---
@@ -1159,7 +1280,7 @@ Estimated monthly cost after free tier: ~$10–15/month
 ## Roadmap
 
 ```
-v1.0 — Current
+v1.0 — Foundation (done)
   [x] Zero open inbound ports (Terraform + UFW enforced)
   [x] Cloudflare Tunnel — outbound-only egress
   [x] Authentik IdP — OIDC + mandatory TOTP MFA
@@ -1170,17 +1291,17 @@ v1.0 — Current
   [x] Automated EBS snapshots + backup to S3
   [x] CI: TruffleHog + tfsec + ShellCheck + compose validation
 
-v1.1 — Security Hardening
-  [x] WebAuthn / Passkey support in Authentik (Face ID, Touch ID, YubiKey, Windows Hello)
-  [x] Device posture checks: WARP client, disk encryption (BitLocker/FileVault), OS version
-  [x] Geo-blocking: WAF rules via Terraform (block countries + strict allow-list mode)
-  [x] Automated threat response: threat-watcher queries Loki + bans IPs via Cloudflare API
+v1.1 — Security Hardening (done)
+  [x] WebAuthn / Passkey support (Face ID, Touch ID, YubiKey, Windows Hello)
+  [x] Device posture: WARP client, BitLocker/FileVault, OS version via Cloudflare Zero Trust
+  [x] Geo-blocking: Cloudflare WAF rules via Terraform (block list + strict allow-list mode)
+  [x] Automated threat response: threat-watcher bans repeat-failure IPs via Cloudflare API
 
-v1.2 — Access Enhancements
+v1.2 — Access Enhancements (current)
   [x] SCIM v2.0 inbound provisioning from HR systems (Okta, Azure AD, Workday)
   [x] SAML 2.0 SP federation with Azure AD and Okta (attribute + group mappings)
-  [x] Time-based access: Mon–Fri 08:00–18:00 expression policy, on-call bypass group
-  [x] Per-connection session recording in Guacamole (.guac files, S3 archive, purge)
+  [x] Time-based access: Mon–Fri 08:00–18:00 expression policy + on-call bypass group
+  [x] Per-connection session recording (.guac files → S3 archive with AES-256 encryption)
 
 v2.0 — High Availability
   [ ] Multi-AZ deployment (RDS for Authentik/Guacamole DBs)

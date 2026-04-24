@@ -1,0 +1,108 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 420" font-family="system-ui,-apple-system,sans-serif">
+  <defs>
+    <marker id="a" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#58a6ff"/></marker>
+    <marker id="ag" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#3fb950"/></marker>
+    <marker id="ar" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#f85149"/></marker>
+    <marker id="ao" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#f6821f"/></marker>
+  </defs>
+
+  <rect width="900" height="420" fill="#010409"/>
+  <text x="450" y="30" text-anchor="middle" fill="#f0f6fc" font-size="15" font-weight="700">Authentication Flow — How Access Works</text>
+  <text x="450" y="48" text-anchor="middle" fill="#484f58" font-size="9">Every request must pass all gates in sequence · Failure at any gate = denied</text>
+
+  <!-- Actors (columns) -->
+  <!-- User: x=70, CF Edge: x=240, Authentik: x=430, Service: x=620, blocked: x=800 -->
+
+  <!-- Column headers -->
+  <rect x="30" y="60" width="80" height="30" rx="4" fill="#0d1929" stroke="#1f6feb" stroke-width="1"/>
+  <text x="70" y="79" text-anchor="middle" fill="#58a6ff" font-size="10" font-weight="600">User</text>
+
+  <rect x="200" y="60" width="80" height="30" rx="4" fill="#100c00" stroke="#f6821f" stroke-width="1"/>
+  <text x="240" y="79" text-anchor="middle" fill="#f6821f" font-size="10" font-weight="600">CF Edge</text>
+
+  <rect x="390" y="60" width="80" height="30" rx="4" fill="#110600" stroke="#f85149" stroke-width="1"/>
+  <text x="430" y="79" text-anchor="middle" fill="#f85149" font-size="10" font-weight="600">Authentik</text>
+
+  <rect x="580" y="60" width="80" height="30" rx="4" fill="#071108" stroke="#238636" stroke-width="1"/>
+  <text x="620" y="79" text-anchor="middle" fill="#3fb950" font-size="10" font-weight="600">Service</text>
+
+  <rect x="760" y="60" width="80" height="30" rx="4" fill="#160a0a" stroke="#9e1515" stroke-width="1"/>
+  <text x="800" y="79" text-anchor="middle" fill="#f85149" font-size="10" font-weight="600">Blocked</text>
+
+  <!-- Lifelines -->
+  <line x1="70"  y1="90" x2="70"  y2="400" stroke="#1f6feb" stroke-width="0.5" stroke-dasharray="4,4"/>
+  <line x1="240" y1="90" x2="240" y2="400" stroke="#f6821f" stroke-width="0.5" stroke-dasharray="4,4"/>
+  <line x1="430" y1="90" x2="430" y2="400" stroke="#f85149" stroke-width="0.5" stroke-dasharray="4,4"/>
+  <line x1="620" y1="90" x2="620" y2="400" stroke="#238636" stroke-width="0.5" stroke-dasharray="4,4"/>
+  <line x1="800" y1="90" x2="800" y2="400" stroke="#9e1515" stroke-width="0.5" stroke-dasharray="4,4"/>
+
+  <!-- Step 1: User → CF -->
+  <line x1="75" y1="115" x2="233" y2="115" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#a)"/>
+  <text x="154" y="110" text-anchor="middle" fill="#58a6ff" font-size="8.5">1. HTTPS request</text>
+  <!-- Gate label -->
+  <rect x="202" y="120" width="76" height="14" rx="2" fill="#1f1600"/>
+  <text x="240" y="131" text-anchor="middle" fill="#d4a017" font-size="7.5">Gate 1: Geo + Rate limit</text>
+  <rect x="202" y="137" width="76" height="14" rx="2" fill="#1f1600"/>
+  <text x="240" y="148" text-anchor="middle" fill="#d4a017" font-size="7.5">Gate 2: Device posture</text>
+
+  <!-- Geo/posture fail → blocked -->
+  <line x1="280" y1="143" x2="793" y2="143" stroke="#f85149" stroke-width="1" stroke-dasharray="3,2" marker-end="url(#ar)"/>
+  <text x="536" y="138" text-anchor="middle" fill="#f85149" font-size="7.5">WAF blocks: geo · bot · bad device</text>
+
+  <!-- Step 2: CF → Authentik -->
+  <line x1="245" y1="170" x2="423" y2="170" stroke="#f6821f" stroke-width="1.5" marker-end="url(#ao)"/>
+  <text x="334" y="165" text-anchor="middle" fill="#f6821f" font-size="8.5">2. Redirect to login (via Tunnel)</text>
+
+  <!-- Step 3: User → Authentik login -->
+  <line x1="75" y1="195" x2="423" y2="195" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#a)"/>
+  <text x="248" y="190" text-anchor="middle" fill="#58a6ff" font-size="8.5">3. Credentials submitted</text>
+  <!-- Gate label -->
+  <rect x="392" y="200" width="76" height="14" rx="2" fill="#110600"/>
+  <text x="430" y="211" text-anchor="middle" fill="#d4a017" font-size="7.5">Gate 3: Password + HIBP</text>
+  <rect x="392" y="217" width="76" height="14" rx="2" fill="#110600"/>
+  <text x="430" y="228" text-anchor="middle" fill="#d4a017" font-size="7.5">Gate 4: Reputation policy</text>
+
+  <!-- Brute-force fail → blocked -->
+  <line x1="470" y1="223" x2="793" y2="223" stroke="#f85149" stroke-width="1" stroke-dasharray="3,2" marker-end="url(#ar)"/>
+  <text x="631" y="218" text-anchor="middle" fill="#f85149" font-size="7.5">Bad creds / lockout / HIBP hit</text>
+
+  <!-- Step 4: MFA -->
+  <line x1="430" y1="248" x2="82" y2="248" stroke="#f85149" stroke-width="1.5" marker-end="url(#a)"/>
+  <text x="256" y="243" text-anchor="middle" fill="#f85149" font-size="8.5">4. MFA challenge (TOTP / WebAuthn)</text>
+  <line x1="75" y1="263" x2="423" y2="263" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#a)"/>
+  <text x="248" y="258" text-anchor="middle" fill="#58a6ff" font-size="8.5">5. MFA response</text>
+  <!-- Gate label -->
+  <rect x="392" y="268" width="76" height="14" rx="2" fill="#110600"/>
+  <text x="430" y="279" text-anchor="middle" fill="#d4a017" font-size="7.5">Gate 5: TOTP / WebAuthn</text>
+  <rect x="392" y="285" width="76" height="14" rx="2" fill="#110600"/>
+  <text x="430" y="296" text-anchor="middle" fill="#d4a017" font-size="7.5">Gate 6: Time policy check</text>
+
+  <!-- MFA fail → blocked -->
+  <line x1="470" y1="291" x2="793" y2="291" stroke="#f85149" stroke-width="1" stroke-dasharray="3,2" marker-end="url(#ar)"/>
+  <text x="631" y="286" text-anchor="middle" fill="#f85149" font-size="7.5">MFA failed / outside hours</text>
+
+  <!-- Step 5: Token issued -->
+  <line x1="430" y1="315" x2="82" y2="315" stroke="#3fb950" stroke-width="1.5" marker-end="url(#ag)"/>
+  <text x="256" y="310" text-anchor="middle" fill="#3fb950" font-size="8.5">6. OIDC token issued (groups + claims)</text>
+
+  <!-- Step 6: Token → CF, access granted -->
+  <line x1="75" y1="335" x2="233" y2="335" stroke="#3fb950" stroke-width="1.5" marker-end="url(#ag)"/>
+  <text x="154" y="330" text-anchor="middle" fill="#3fb950" font-size="8.5">7. Token presented</text>
+  <!-- Gate label -->
+  <rect x="202" y="340" width="76" height="14" rx="2" fill="#051205"/>
+  <text x="240" y="351" text-anchor="middle" fill="#3fb950" font-size="7.5">Gate 7: Group membership</text>
+  <rect x="202" y="357" width="76" height="14" rx="2" fill="#051205"/>
+  <text x="240" y="368" text-anchor="middle" fill="#3fb950" font-size="7.5">Gate 8: Session lifetime</text>
+
+  <!-- CF → Service (allowed) -->
+  <line x1="280" y1="375" x2="613" y2="375" stroke="#3fb950" stroke-width="2" marker-end="url(#ag)"/>
+  <text x="446" y="370" text-anchor="middle" fill="#3fb950" font-size="9" font-weight="600">Access granted via Cloudflare Tunnel</text>
+
+  <!-- Session box -->
+  <rect x="582" y="382" width="76" height="12" rx="2" fill="#071108"/>
+  <text x="620" y="392" text-anchor="middle" fill="#484f58" font-size="7.5">Session recorded · 8 h TTL</text>
+
+  <!-- Group-check fail → blocked -->
+  <line x1="280" y1="363" x2="793" y2="355" stroke="#f85149" stroke-width="1" stroke-dasharray="3,2" marker-end="url(#ar)"/>
+  <text x="540" y="356" text-anchor="middle" fill="#f85149" font-size="7.5">Wrong group / expired session</text>
+</svg>

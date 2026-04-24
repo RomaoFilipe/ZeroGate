@@ -1,0 +1,217 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 640" font-family="system-ui,-apple-system,sans-serif">
+  <defs>
+    <marker id="ag" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#22c55e"/></marker>
+    <marker id="ao" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#f6821f"/></marker>
+    <marker id="ap" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#a78bfa"/></marker>
+    <marker id="ar" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#ef4444"/></marker>
+    <marker id="ay" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#f0883e"/></marker>
+    <marker id="ab" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#388bfd"/></marker>
+    <linearGradient id="gBg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#0d1117"/><stop offset="100%" stop-color="#010409"/></linearGradient>
+    <filter id="glow"><feGaussianBlur stdDeviation="3" result="coloredBlur"/><feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1000" height="640" fill="url(#gBg)"/>
+
+  <!-- Header -->
+  <text x="500" y="36" text-anchor="middle" fill="#f0f6fc" font-size="18" font-weight="700" letter-spacing="-0.5">ZeroGate Access — Zero Trust Network Access Architecture</text>
+  <text x="500" y="56" text-anchor="middle" fill="#484f58" font-size="10">Zero inbound ports · MFA enforced for every user · All secrets in AWS Secrets Manager · v2.0 HA</text>
+
+  <!-- ── ZONE 1: INTERNET ──────────────────────────────── -->
+  <rect x="12" y="70" width="174" height="500" rx="8" fill="#0d1117" stroke="#21262d" stroke-width="1"/>
+  <text x="99" y="88" text-anchor="middle" fill="#484f58" font-size="9" font-weight="600" letter-spacing="2">INTERNET</text>
+
+  <!-- Remote Users -->
+  <rect x="22" y="98" width="154" height="96" rx="6" fill="#0d1929" stroke="#1f6feb" stroke-width="1"/>
+  <text x="99" y="118" text-anchor="middle" fill="#58a6ff" font-size="11" font-weight="600">Remote Users</text>
+  <text x="99" y="135" text-anchor="middle" fill="#484f58" font-size="8.5">Browser · any OS · any network</text>
+  <text x="99" y="149" text-anchor="middle" fill="#484f58" font-size="8.5">WARP client (device posture)</text>
+  <text x="99" y="163" text-anchor="middle" fill="#484f58" font-size="8.5">Corporate SSO via SAML</text>
+  <text x="99" y="177" text-anchor="middle" fill="#1f6feb" font-size="8.5">HTTPS 443 only</text>
+
+  <!-- Enterprise IdP -->
+  <rect x="22" y="207" width="154" height="96" rx="6" fill="#130d29" stroke="#6e40c9" stroke-width="1"/>
+  <text x="99" y="227" text-anchor="middle" fill="#a371f7" font-size="11" font-weight="600">Enterprise IdP</text>
+  <text x="99" y="244" text-anchor="middle" fill="#484f58" font-size="8.5">Azure AD · Okta · Google WS</text>
+  <text x="99" y="258" text-anchor="middle" fill="#484f58" font-size="8.5">SAML 2.0 SP federation</text>
+  <text x="99" y="272" text-anchor="middle" fill="#484f58" font-size="8.5">SCIM v2.0 user + group sync</text>
+  <text x="99" y="286" text-anchor="middle" fill="#484f58" font-size="8.5">HR system provisioning</text>
+
+  <!-- Threat Actors -->
+  <rect x="22" y="316" width="154" height="110" rx="6" fill="#160a0a" stroke="#6e1313" stroke-width="1"/>
+  <text x="99" y="336" text-anchor="middle" fill="#f85149" font-size="11" font-weight="600">Threat Actors</text>
+  <text x="99" y="353" text-anchor="middle" fill="#6e3535" font-size="8.5">Brute force · credential stuffing</text>
+  <text x="99" y="367" text-anchor="middle" fill="#6e3535" font-size="8.5">Geo-blocked countries</text>
+  <text x="99" y="381" text-anchor="middle" fill="#6e3535" font-size="8.5">Unmanaged / non-compliant devices</text>
+  <text x="99" y="395" text-anchor="middle" fill="#6e3535" font-size="8.5">Bot traffic · vulnerability scanners</text>
+  <text x="99" y="409" text-anchor="middle" fill="#f85149" font-size="8.5" font-weight="600">→ BLOCKED AT EDGE</text>
+
+  <!-- Admin -->
+  <rect x="22" y="440" width="154" height="80" rx="6" fill="#0a160a" stroke="#238636" stroke-width="1"/>
+  <text x="99" y="460" text-anchor="middle" fill="#3fb950" font-size="11" font-weight="600">Admin / On-Call</text>
+  <text x="99" y="477" text-anchor="middle" fill="#484f58" font-size="8.5">AWS SSM session (no SSH)</text>
+  <text x="99" y="491" text-anchor="middle" fill="#484f58" font-size="8.5">Zero open ports needed</text>
+  <text x="99" y="505" text-anchor="middle" fill="#484f58" font-size="8.5">make ssm · make ssm-tunnel-*</text>
+
+  <!-- ── ZONE 2: CLOUDFLARE ─────────────────────────── -->
+  <rect x="197" y="70" width="295" height="500" rx="8" fill="#100c00" stroke="#f6821f" stroke-width="1" stroke-opacity="0.6"/>
+  <text x="344" y="88" text-anchor="middle" fill="#f6821f" font-size="9" font-weight="600" letter-spacing="2">CLOUDFLARE EDGE</text>
+
+  <!-- Zero Trust -->
+  <rect x="209" y="98" width="271" height="225" rx="6" fill="#130e00" stroke="#f6821f" stroke-width="1"/>
+  <text x="344" y="118" text-anchor="middle" fill="#f6821f" font-size="12" font-weight="700">Zero Trust Access</text>
+
+  <rect x="218" y="126" width="253" height="20" rx="3" fill="#1f1600"/><text x="226" y="140" fill="#d4a017" font-size="9">  MFA: TOTP + WebAuthn / Passkey — enforced for all</text>
+  <rect x="218" y="150" width="253" height="20" rx="3" fill="#1f1600"/><text x="226" y="164" fill="#d4a017" font-size="9">  Device posture: WARP · BitLocker · FileVault · OS ver</text>
+  <rect x="218" y="174" width="253" height="20" rx="3" fill="#1f1600"/><text x="226" y="188" fill="#d4a017" font-size="9">  Geo-block: RU · CN · KP · IR · BY · SY (Terraform WAF)</text>
+  <rect x="218" y="198" width="253" height="20" rx="3" fill="#1f1600"/><text x="226" y="212" fill="#d4a017" font-size="9">  Rate limit: 20 req / min / IP on /authorize</text>
+  <rect x="218" y="222" width="253" height="20" rx="3" fill="#1f1600"/><text x="226" y="236" fill="#d4a017" font-size="9">  Sessions: 8 h default · 4 h Guacamole (high-value)</text>
+  <rect x="218" y="246" width="253" height="20" rx="3" fill="#1f1600"/><text x="226" y="260" fill="#d4a017" font-size="9">  Time policy: Mon–Fri 08:00–18:00 · on-call bypass</text>
+  <rect x="218" y="270" width="253" height="20" rx="3" fill="#1f1600"/><text x="226" y="284" fill="#d4a017" font-size="9">  Browser isolation for contractor group</text>
+
+  <!-- Cloudflare Tunnel -->
+  <rect x="209" y="337" width="271" height="100" rx="6" fill="#130e00" stroke="#f6821f" stroke-width="1"/>
+  <text x="344" y="357" text-anchor="middle" fill="#f6821f" font-size="12" font-weight="700">Cloudflare Tunnel</text>
+  <text x="344" y="375" text-anchor="middle" fill="#484f58" font-size="9">Outbound WebSocket — port 443 only</text>
+  <text x="344" y="390" text-anchor="middle" fill="#484f58" font-size="9">Zero inbound ports required on EC2</text>
+  <text x="344" y="405" text-anchor="middle" fill="#f6821f" font-size="9" font-weight="600">v2.0: ASG multi-connector · 2+ nodes · 2 AZs</text>
+  <text x="344" y="420" text-anchor="middle" fill="#484f58" font-size="9">Automatic failover across connectors</text>
+
+  <!-- WAF -->
+  <rect x="209" y="450" width="271" height="110" rx="6" fill="#130e00" stroke="#f97316" stroke-width="1"/>
+  <text x="344" y="470" text-anchor="middle" fill="#fb923c" font-size="12" font-weight="700">WAF + Threat Response</text>
+  <text x="344" y="488" text-anchor="middle" fill="#484f58" font-size="9">Custom rules via Terraform (cloudflare.tf)</text>
+  <text x="344" y="503" text-anchor="middle" fill="#484f58" font-size="9">Bot fight mode · DDoS L3/L4/L7 protection</text>
+  <text x="344" y="518" text-anchor="middle" fill="#484f58" font-size="9">Auto IP-ban: threat-watcher queries Loki → CF API</text>
+  <text x="344" y="533" text-anchor="middle" fill="#484f58" font-size="9">Alert on ban event → Grafana → email</text>
+  <text x="344" y="548" text-anchor="middle" fill="#484f58" font-size="9">Banned IPs visible in Grafana security dashboard</text>
+
+  <!-- ── ZONE 3: AWS ────────────────────────────────── -->
+  <rect x="503" y="70" width="484" height="500" rx="8" fill="#0d1117" stroke="#f0883e" stroke-width="1" stroke-opacity="0.5"/>
+  <text x="745" y="88" text-anchor="middle" fill="#f0883e" font-size="9" font-weight="600" letter-spacing="2">AWS eu-west-1 — EC2 t2.micro · 1 GB RAM · EBS 30 GB gp3 encrypted</text>
+
+  <!-- Docker bridge -->
+  <rect x="516" y="98" width="458" height="300" rx="6" fill="#0a0f17" stroke="#1f6feb" stroke-width="0.8" stroke-dasharray="5,3"/>
+  <text x="745" y="115" text-anchor="middle" fill="#1f6feb" font-size="8">Docker bridge network: zerogate-internal (172.20.0.0/16) — containers isolated from host</text>
+
+  <!-- Row 1 -->
+  <rect x="527" y="124" width="137" height="62" rx="5" fill="#110c00" stroke="#f6821f" stroke-width="1.5"/>
+  <text x="595" y="145" text-anchor="middle" fill="#f6821f" font-size="10.5" font-weight="700">cloudflared</text>
+  <text x="595" y="161" text-anchor="middle" fill="#484f58" font-size="8">2024.12.2</text>
+  <text x="595" y="175" text-anchor="middle" fill="#484f58" font-size="8">Outbound tunnel connector</text>
+
+  <rect x="674" y="124" width="137" height="62" rx="5" fill="#110600" stroke="#f85149" stroke-width="1.5"/>
+  <text x="742" y="145" text-anchor="middle" fill="#f85149" font-size="10.5" font-weight="700">Authentik</text>
+  <text x="742" y="161" text-anchor="middle" fill="#484f58" font-size="8">2024.12.3 · OIDC / SAML IdP</text>
+  <text x="742" y="175" text-anchor="middle" fill="#484f58" font-size="8">TOTP + WebAuthn + SAML SP</text>
+
+  <rect x="821" y="124" width="141" height="62" rx="5" fill="#110505" stroke="#b91c1c" stroke-width="1.5"/>
+  <text x="891" y="145" text-anchor="middle" fill="#ff7b72" font-size="10.5" font-weight="700">Redis</text>
+  <text x="891" y="161" text-anchor="middle" fill="#484f58" font-size="8">7-alpine</text>
+  <text x="891" y="175" text-anchor="middle" fill="#484f58" font-size="8">Session cache · pw-protected</text>
+
+  <!-- Row 2 -->
+  <rect x="527" y="198" width="137" height="62" rx="5" fill="#071108" stroke="#238636" stroke-width="1.5"/>
+  <text x="595" y="219" text-anchor="middle" fill="#3fb950" font-size="10.5" font-weight="700">Guacamole</text>
+  <text x="595" y="235" text-anchor="middle" fill="#484f58" font-size="8">1.5.5 · SSH / RDP / VNC</text>
+  <text x="595" y="249" text-anchor="middle" fill="#484f58" font-size="8">Session recording → S3</text>
+
+  <rect x="674" y="198" width="137" height="62" rx="5" fill="#110900" stroke="#e05c17" stroke-width="1.5"/>
+  <text x="742" y="219" text-anchor="middle" fill="#f78166" font-size="10.5" font-weight="700">Grafana</text>
+  <text x="742" y="235" text-anchor="middle" fill="#484f58" font-size="8">11.4.0 · 3 dashboards</text>
+  <text x="742" y="249" text-anchor="middle" fill="#484f58" font-size="8">OIDC login via Authentik</text>
+
+  <rect x="821" y="198" width="141" height="62" rx="5" fill="#060e1a" stroke="#1f6feb" stroke-width="1.5"/>
+  <text x="891" y="219" text-anchor="middle" fill="#58a6ff" font-size="10.5" font-weight="700">PostgreSQL</text>
+  <text x="891" y="235" text-anchor="middle" fill="#484f58" font-size="8">16-alpine</text>
+  <text x="891" y="249" text-anchor="middle" fill="#484f58" font-size="8">Authentik + Guacamole DBs</text>
+
+  <!-- Row 3 -->
+  <rect x="527" y="272" width="137" height="62" rx="5" fill="#111006" stroke="#c9930a" stroke-width="1.5"/>
+  <text x="595" y="293" text-anchor="middle" fill="#d4a017" font-size="10.5" font-weight="700">Loki + Promtail</text>
+  <text x="595" y="309" text-anchor="middle" fill="#484f58" font-size="8">3.3.2 · Log aggregation</text>
+  <text x="595" y="323" text-anchor="middle" fill="#484f58" font-size="8">All container logs shipped</text>
+
+  <rect x="674" y="272" width="137" height="62" rx="5" fill="#110900" stroke="#b45309" stroke-width="1.5"/>
+  <text x="742" y="293" text-anchor="middle" fill="#e6522c" font-size="10.5" font-weight="700">Prometheus</text>
+  <text x="742" y="309" text-anchor="middle" fill="#484f58" font-size="8">v2.55.1 · node-exporter</text>
+  <text x="742" y="323" text-anchor="middle" fill="#484f58" font-size="8">cAdvisor · metrics scrape</text>
+
+  <rect x="821" y="272" width="141" height="62" rx="5" fill="#120404" stroke="#9e1515" stroke-width="1.5"/>
+  <text x="891" y="293" text-anchor="middle" fill="#ef4444" font-size="10.5" font-weight="700">threat-watcher</text>
+  <text x="891" y="309" text-anchor="middle" fill="#484f58" font-size="8">Query Loki every 5 min</text>
+  <text x="891" y="323" text-anchor="middle" fill="#484f58" font-size="8">Auto-ban via CF API</text>
+
+  <!-- Secrets Manager -->
+  <rect x="516" y="413" width="220" height="94" rx="6" fill="#110d00" stroke="#f0883e" stroke-width="1"/>
+  <text x="626" y="433" text-anchor="middle" fill="#f0883e" font-size="10.5" font-weight="700">Secrets Manager</text>
+  <text x="626" y="450" text-anchor="middle" fill="#484f58" font-size="8.5">authentik · guacamole · grafana</text>
+  <text x="626" y="464" text-anchor="middle" fill="#484f58" font-size="8.5">cloudflare · cloudflare-api · rds (v2.0)</text>
+  <text x="626" y="478" text-anchor="middle" fill="#484f58" font-size="8.5">Read via IAM role — no credentials on disk</text>
+  <text x="626" y="492" text-anchor="middle" fill="#484f58" font-size="8.5">bootstrap.sh pulls all secrets at startup</text>
+
+  <!-- RDS Multi-AZ -->
+  <rect x="750" y="413" width="247" height="94" rx="6" fill="#051205" stroke="#238636" stroke-width="1" stroke-dasharray="5,3"/>
+  <text x="873" y="433" text-anchor="middle" fill="#3fb950" font-size="10.5" font-weight="700">RDS Multi-AZ  (v2.0)</text>
+  <text x="873" y="450" text-anchor="middle" fill="#484f58" font-size="8.5">PostgreSQL 16.3 · db.t3.micro</text>
+  <text x="873" y="464" text-anchor="middle" fill="#484f58" font-size="8.5">Primary AZ-a + Standby AZ-b (synchronous)</text>
+  <text x="873" y="478" text-anchor="middle" fill="#484f58" font-size="8.5">Auto-failover 60-120 s · zero data loss</text>
+  <text x="873" y="492" text-anchor="middle" fill="#3fb950" font-size="8.5">enable_rds=true in terraform.tfvars</text>
+
+  <!-- IAM footer -->
+  <rect x="516" y="520" width="458" height="44" rx="5" fill="#0d1117" stroke="#21262d" stroke-width="0.7"/>
+  <text x="745" y="537" text-anchor="middle" fill="#484f58" font-size="8">IAM Role: SSM (no SSH) · Secrets Manager read · CloudWatch Logs · DLM snapshot policy</text>
+  <text x="745" y="552" text-anchor="middle" fill="#484f58" font-size="8">GuardDuty + S3 malware scan · CloudTrail · VPC Flow Logs · IMDSv2 enforced · EBS encrypted gp3</text>
+
+  <!-- ── ARROWS ───────────────────────────────────────── -->
+
+  <!-- Users → Cloudflare (green) -->
+  <path d="M 176,146 L 207,146" stroke="#22c55e" stroke-width="1.5" fill="none" marker-end="url(#ag)"/>
+  <text x="191" y="140" text-anchor="middle" fill="#22c55e" font-size="7.5">HTTPS</text>
+
+  <!-- IdP → Cloudflare (purple) -->
+  <path d="M 176,255 L 207,218" stroke="#a78bfa" stroke-width="1.5" fill="none" marker-end="url(#ap)"/>
+  <text x="188" y="248" text-anchor="middle" fill="#a78bfa" font-size="7.5">SAML</text>
+
+  <!-- Threats → WAF (red, blocked) -->
+  <path d="M 176,371 L 207,490" stroke="#ef4444" stroke-width="1.2" fill="none" stroke-dasharray="4,2" marker-end="url(#ar)"/>
+  <circle cx="205" cy="484" r="9" fill="#1a0000" stroke="#ef4444" stroke-width="1.2"/>
+  <text x="205" y="488" text-anchor="middle" fill="#ef4444" font-size="10" font-weight="700">✕</text>
+
+  <!-- Cloudflare Tunnel ↔ cloudflared (orange bezier) -->
+  <path d="M 482,387 C 502,387 504,155 525,155" stroke="#f6821f" stroke-width="2" fill="none" stroke-dasharray="6,3" marker-end="url(#ao)"/>
+  <text x="469" y="295" fill="#f6821f" font-size="8" text-anchor="end">Tunnel</text>
+  <text x="469" y="308" fill="#f6821f" font-size="8" text-anchor="end">(WS)</text>
+
+  <!-- EC2 → Secrets Manager -->
+  <path d="M 668,398 L 636,411" stroke="#f0883e" stroke-width="1" fill="none" stroke-dasharray="2,2" marker-end="url(#ay)"/>
+
+  <!-- PostgreSQL → RDS (upgrade path, dashed) -->
+  <path d="M 873,398 L 873,411" stroke="#3fb950" stroke-width="1" fill="none" stroke-dasharray="3,2" marker-end="url(#ag)"/>
+
+  <!-- ── LEGEND ──────────────────────────────────────── -->
+  <rect x="12" y="582" width="974" height="44" rx="5" fill="#0d1117" stroke="#21262d" stroke-width="0.8"/>
+
+  <line x1="24" y1="604" x2="46" y2="604" stroke="#22c55e" stroke-width="2"/><polygon points="46,601 52,604 46,607" fill="#22c55e"/>
+  <text x="57" y="608" fill="#484f58" font-size="8.5">Allowed (HTTPS)</text>
+
+  <line x1="145" y1="604" x2="167" y2="604" stroke="#a78bfa" stroke-width="1.5"/><polygon points="167,601 173,604 167,607" fill="#a78bfa"/>
+  <text x="178" y="608" fill="#484f58" font-size="8.5">SAML / SCIM</text>
+
+  <line x1="257" y1="604" x2="279" y2="604" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="3,2"/>
+  <text x="284" y="608" fill="#484f58" font-size="8.5">Blocked (WAF / posture)</text>
+
+  <line x1="393" y1="604" x2="415" y2="604" stroke="#f6821f" stroke-width="2" stroke-dasharray="5,3"/><polygon points="415,601 421,604 415,607" fill="#f6821f"/>
+  <text x="426" y="608" fill="#484f58" font-size="8.5">Cloudflare Tunnel (outbound WebSocket)</text>
+
+  <line x1="602" y1="604" x2="624" y2="604" stroke="#f0883e" stroke-width="1" stroke-dasharray="2,2"/><polygon points="624,601 630,604 624,607" fill="#f0883e"/>
+  <text x="635" y="608" fill="#484f58" font-size="8.5">AWS internal</text>
+
+  <rect x="710" y="597" width="12" height="12" fill="none" stroke="#238636" stroke-width="1" stroke-dasharray="4,2"/>
+  <text x="728" y="608" fill="#484f58" font-size="8.5">Optional / v2.0 HA</text>
+
+  <rect x="820" y="597" width="12" height="12" fill="none" stroke="#1f6feb" stroke-width="0.8" stroke-dasharray="4,2"/>
+  <text x="838" y="608" fill="#484f58" font-size="8.5">Docker bridge network</text>
+
+  <text x="984" y="621" text-anchor="end" fill="#21262d" font-size="7.5">ZeroGate Access v2.0</text>
+</svg>

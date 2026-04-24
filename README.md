@@ -1,21 +1,33 @@
 <div align="center">
 
+<img src="docs/architecture.svg" alt="ZeroGate Access Architecture" width="100%"/>
+
+<br/>
+
 # ZeroGate Access
 
 **Self-hosted Zero Trust Network Access — no VPN, no open ports, no compromise.**
 
-[![Terraform](https://img.shields.io/badge/Terraform-1.7+-7B42BC?style=flat-square&logo=terraform)](https://terraform.io)
-[![Cloudflare](https://img.shields.io/badge/Cloudflare-Tunnel-F48120?style=flat-square&logo=cloudflare)](https://www.cloudflare.com/products/tunnel/)
-[![Authentik](https://img.shields.io/badge/Authentik-2024.12-FD4B2D?style=flat-square)](https://goauthentik.io)
-[![Guacamole](https://img.shields.io/badge/Guacamole-1.5.5-77933C?style=flat-square)](https://guacamole.apache.org)
-[![Grafana](https://img.shields.io/badge/Grafana-11.4-F46800?style=flat-square&logo=grafana)](https://grafana.com)
-[![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=flat-square&logo=docker)](https://docker.com)
-[![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)](LICENSE)
-[![CI](https://img.shields.io/badge/CI-Passing-brightgreen?style=flat-square)](.github/workflows/ci.yml)
+<br/>
 
-*Every request authenticated. Every action logged. Zero ports exposed. No exceptions.*
+[![Terraform](https://img.shields.io/badge/Terraform-≥1.7-7B42BC?style=for-the-badge&logo=terraform&logoColor=white)](https://terraform.io)
+[![Cloudflare](https://img.shields.io/badge/Cloudflare-Tunnel-F48120?style=for-the-badge&logo=cloudflare&logoColor=white)](https://www.cloudflare.com/products/tunnel/)
+[![Authentik](https://img.shields.io/badge/Authentik-2024.12-FD4B2D?style=for-the-badge&logo=openid&logoColor=white)](https://goauthentik.io)
+[![Guacamole](https://img.shields.io/badge/Guacamole-1.5.5-77933C?style=for-the-badge)](https://guacamole.apache.org)
+[![Grafana](https://img.shields.io/badge/Grafana-11.4-F46800?style=for-the-badge&logo=grafana&logoColor=white)](https://grafana.com)
 
-[What is it?](#what-is-zerogate) · [Quick Start](#quick-start) · [Architecture](#architecture) · [Service Map](#service-map) · [Deployment](#deployment-phases) · [Configuration](#configuration-reference) · [Operations](#operations) · [Security](#security) · [Roadmap](#roadmap)
+[![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://docker.com)
+[![AWS](https://img.shields.io/badge/AWS-EC2+Secrets-FF9900?style=for-the-badge&logo=amazonaws&logoColor=white)](https://aws.amazon.com)
+[![License](https://img.shields.io/badge/License-MIT-22C55E?style=for-the-badge)](LICENSE)
+[![CI](https://img.shields.io/badge/CI-TruffleHog+tfsec+ShellCheck-58A6FF?style=for-the-badge)](.github/workflows/ci.yml)
+
+<br/>
+
+> *Every request authenticated · Every action logged · Zero ports exposed · No exceptions*
+
+<br/>
+
+[What is it?](#what-is-zerogate-access) · [Quick Start](#quick-start) · [Architecture](#architecture) · [Auth Flow](#authentication-flow) · [Service Map](#service-map) · [Deployment](#deployment-phases) · [Operations](#operations) · [Security](#security) · [Roadmap](#roadmap)
 
 </div>
 
@@ -93,98 +105,35 @@ make audit
 
 ## Architecture
 
-### High-Level Overview
+<img src="docs/architecture.svg" alt="ZeroGate Access Architecture Diagram" width="100%"/>
 
-```
-┌──────────────────────────────────────────────────────────────────────┐
-│                            INTERNET                                  │
-│                                                                      │
-│   [End User Browser]                                                 │
-│         │                                                            │
-│         │ HTTPS / TLS 1.3                                            │
-│         ▼                                                            │
-│   ┌─────────────────────────────────────────────────────────────┐   │
-│   │                   CLOUDFLARE EDGE                            │   │
-│   │                                                              │   │
-│   │   ┌──────────────────┐    ┌────────────────────────────┐   │   │
-│   │   │  Cloudflare      │    │  Cloudflare Tunnel         │   │   │
-│   │   │  Access          │    │  (outbound WebSocket only) │   │   │
-│   │   │  (AuthN + AuthZ) │    │                            │   │   │
-│   │   └────────┬─────────┘    └──────────────┬─────────────┘   │   │
-│   │            │ Authenticated                │ Encrypted        │   │
-│   │            │ Session                      │ Tunnel           │   │
-│   └────────────────────────────────────────────────────────────┘   │
-│                │                              │                      │
-└────────────────────────────────────────────────────────────────────┘
-                 │                              │
-                 │           AWS VPC (eu-west-1, 10.0.0.0/16)
-                 │                              │
-                 ▼                              ▼
-   ┌─────────────────────────────────────────────────────────────────┐
-   │              EC2 t2.micro — Ubuntu 24.04 LTS                    │
-   │              EIP (stable outbound) — Security Group: 0 inbound  │
-   │              EBS 30GB gp3 encrypted — IMDSv2 enforced           │
-   │                                                                  │
-   │    Docker bridge: zerogate-internal (172.20.0.0/16)             │
-   │   ┌──────────────────────────────────────────────────────────┐  │
-   │   │                                                          │  │
-   │   │  ┌─────────────┐  ┌─────────────┐  ┌────────────────┐  │  │
-   │   │  │ cloudflared │  │  Authentik  │  │   Guacamole    │  │  │
-   │   │  │ (tunnel)    │  │  (IdP/MFA)  │  │ (Browser RDP/  │  │  │
-   │   │  │             │  │             │  │  SSH/VNC)      │  │  │
-   │   │  └──────┬──────┘  └──────┬──────┘  └───────┬────────┘  │  │
-   │   │         │                │                  │           │  │
-   │   │         └────────────────┴──────────────────┘           │  │
-   │   │                          │                               │  │
-   │   │   ┌───────────────────────────────────────────────┐     │  │
-   │   │   │            Observability Stack                 │     │  │
-   │   │   │   Grafana · Loki · Prometheus · Promtail      │     │  │
-   │   │   │   node-exporter · cAdvisor                    │     │  │
-   │   │   └───────────────────────────────────────────────┘     │  │
-   │   └──────────────────────────────────────────────────────────┘  │
-   │                                                                  │
-   │   AWS Services: Secrets Manager · GuardDuty · CloudTrail        │
-   │                 VPC Flow Logs · DLM (EBS Snapshots)             │
-   └─────────────────────────────────────────────────────────────────┘
-```
-
-### Request Flow
-
-```
-1.  User → portal.yourdomain.com
-2.  Cloudflare Access intercepts — user not authenticated
-3.  Redirect → auth.yourdomain.com (Authentik login page)
-4.  User enters: username + password
-5.  Authentik challenges: TOTP code (mandatory — no bypass)
-6.  Authentik issues OIDC token → returned to Cloudflare Access
-7.  Cloudflare Access validates token + evaluates access policy
-8.  Authorized: request forwarded via encrypted Cloudflare Tunnel
-9.  cloudflared (on EC2) receives request from tunnel (outbound-initiated)
-10. Request routed to target service (Guacamole / Grafana)
-11. Response returns through tunnel → user sees their resource
-12. All events → Promtail → Loki → Grafana dashboard
-```
+Three zones, one invariant: **no inbound ports on the EC2 instance**. All traffic arrives at Cloudflare's edge and travels inward via an outbound-initiated WebSocket tunnel — there is nothing on the EC2 to scan or attack from the internet.
 
 ### Zero-Port Guarantee
 
 ```
-AWS Security Group — aws_security_group.main (ec2.tf)
-┌────────────────────────────────────────────────┐
-│  Inbound rules:   NONE                         │
-│  Outbound rules:  ALL (cloudflared needs this) │
-└────────────────────────────────────────────────┘
+AWS Security Group — aws_security_group.main (infrastructure/ec2.tf)
+  Inbound rules:   NONE
+  Outbound rules:  ALL (cloudflared reaches Cloudflare edge on 443)
 
-OS-level — UFW (bootstrap.sh)
+OS-level — UFW (scripts/bootstrap.sh)
   default deny incoming
   default allow outgoing
-  (zero ufw allow rules added)
 
-Verification:
+Verify any time:
   aws ec2 describe-security-groups \
-    --group-ids $(terraform output -raw security_group_id) \
+    --group-ids $(cd infrastructure && terraform output -raw security_group_id) \
     --query 'SecurityGroups[0].IpPermissions'
   # Expected: []
 ```
+
+---
+
+## Authentication Flow
+
+<img src="docs/auth-flow.svg" alt="Authentication Flow — 8 gates every request must pass" width="100%"/>
+
+Every request passes **8 sequential gates** — failure at any gate denies access immediately. Gates 1–2 run at the Cloudflare edge before traffic ever reaches AWS. Gates 3–6 run inside Authentik. Gates 7–8 run at Cloudflare Access on the return path.
 
 ---
 

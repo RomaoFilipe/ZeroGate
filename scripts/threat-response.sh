@@ -1,6 +1,6 @@
 #!/bin/bash
 # ============================================================
-# ZeroGate Threat Response — v1.1
+# ZeroGate Access Threat Response — v1.1
 # Queries Loki for auth failure events, extracts source IPs,
 # and bans repeat offenders via the Cloudflare API.
 #
@@ -147,7 +147,7 @@ for ip in "${!IP_COUNT[@]}"; do
     "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/firewall/access_rules/rules" \
     --data "$(jq -n \
       --arg ip "${ip}" \
-      --arg note "Auto-banned by ZeroGate: ${count} auth failures in ${WINDOW_MINUTES}min at $(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+      --arg note "Auto-banned by ZeroGate Access: ${count} auth failures in ${WINDOW_MINUTES}min at $(date -u +%Y-%m-%dT%H:%M:%SZ)" \
       '{mode:"block",configuration:{target:"ip",value:$ip},notes:$note}'
     )" 2>/dev/null)
 

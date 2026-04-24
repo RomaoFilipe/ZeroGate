@@ -1,6 +1,6 @@
 #!/bin/bash
 # ============================================================
-# ZeroGate Health Check
+# ZeroGate Access Health Check
 # Verifies all services are healthy and the tunnel is live.
 # Exit code: 0 = all healthy, 1 = degraded/unhealthy
 # Usage: ./scripts/health-check.sh [--json] [--quiet]
@@ -116,7 +116,7 @@ check_disk_space() {
   fi
 }
 
-[[ "${QUIET}" == "false" && "${JSON_OUTPUT}" == "false" ]] && echo "=== ZeroGate Health Check ==="
+[[ "${QUIET}" == "false" && "${JSON_OUTPUT}" == "false" ]] && echo "=== ZeroGate Access Health Check ==="
 
 # Container health
 check_container "authentik-db"
@@ -164,7 +164,7 @@ fi
 [[ "${QUIET}" == "false" && "${JSON_OUTPUT}" == "false" ]] && {
   echo ""
   if [[ "${OVERALL_STATUS}" -eq 0 ]]; then
-    echo -e "${GREEN}All checks passed — ZeroGate is healthy${NC}"
+    echo -e "${GREEN}All checks passed — ZeroGate Access is healthy${NC}"
   else
     echo -e "${RED}One or more checks failed — investigate above failures${NC}"
   fi

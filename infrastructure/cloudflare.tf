@@ -1,5 +1,5 @@
 # ============================================================
-# ZeroGate — Cloudflare Zero Trust resources (v1.1)
+# ZeroGate Access — Cloudflare Zero Trust resources (v1.1)
 # Manages: WAF geo-blocking, device posture rules
 #
 # Requires: CF_API_TOKEN with permissions:
@@ -20,7 +20,7 @@ resource "cloudflare_ruleset" "geo_block" {
   count = var.enable_geo_blocking ? 1 : 0
 
   zone_id     = var.cf_zone_id
-  name        = "ZeroGate — Geo-Blocking"
+  name        = "ZeroGate Access — Geo-Blocking"
   description = "Block traffic from high-risk countries"
   kind        = "zone"
   phase       = "http_request_firewall_custom"
@@ -60,7 +60,7 @@ resource "cloudflare_ruleset" "geo_allow_only" {
   count = var.enable_geo_blocking && var.allowed_countries_only ? 1 : 0
 
   zone_id     = var.cf_zone_id
-  name        = "ZeroGate — Geo-Allow-Only"
+  name        = "ZeroGate Access — Geo-Allow-Only"
   description = "Allow only traffic from specified countries"
   kind        = "zone"
   phase       = "http_request_firewall_custom"
@@ -89,7 +89,7 @@ resource "cloudflare_device_posture_rule" "warp_client" {
   count = var.enable_device_posture ? 1 : 0
 
   account_id  = var.cf_account_id
-  name        = "ZeroGate — WARP Client Connected"
+  name        = "ZeroGate Access — WARP Client Connected"
   type        = "warp"
   description = "Device must have Cloudflare WARP client running"
   schedule    = "5m"
@@ -101,7 +101,7 @@ resource "cloudflare_device_posture_rule" "disk_encryption_windows" {
   count = var.enable_device_posture ? 1 : 0
 
   account_id  = var.cf_account_id
-  name        = "ZeroGate — Disk Encryption (Windows)"
+  name        = "ZeroGate Access — Disk Encryption (Windows)"
   type        = "disk_encryption"
   description = "Require BitLocker encryption on Windows devices"
   schedule    = "1h"
@@ -121,7 +121,7 @@ resource "cloudflare_device_posture_rule" "disk_encryption_mac" {
   count = var.enable_device_posture ? 1 : 0
 
   account_id  = var.cf_account_id
-  name        = "ZeroGate — Disk Encryption (macOS)"
+  name        = "ZeroGate Access — Disk Encryption (macOS)"
   type        = "disk_encryption"
   description = "Require FileVault encryption on macOS devices"
   schedule    = "1h"
@@ -141,7 +141,7 @@ resource "cloudflare_device_posture_rule" "os_version_windows" {
   count = var.enable_device_posture ? 1 : 0
 
   account_id  = var.cf_account_id
-  name        = "ZeroGate — Windows OS Version"
+  name        = "ZeroGate Access — Windows OS Version"
   type        = "os_version"
   description = "Require Windows 10 21H2 or later (build 19044)"
   schedule    = "1h"
@@ -164,7 +164,7 @@ resource "cloudflare_device_posture_rule" "os_version_mac" {
   count = var.enable_device_posture ? 1 : 0
 
   account_id  = var.cf_account_id
-  name        = "ZeroGate — macOS Version"
+  name        = "ZeroGate Access — macOS Version"
   type        = "os_version"
   description = "Require macOS 13 (Ventura) or later"
   schedule    = "1h"
@@ -189,7 +189,7 @@ resource "cloudflare_ruleset" "rate_limit_auth" {
   count = var.enable_geo_blocking ? 1 : 0
 
   zone_id     = var.cf_zone_id
-  name        = "ZeroGate — Auth Rate Limiting"
+  name        = "ZeroGate Access — Auth Rate Limiting"
   description = "Rate-limit authentication endpoint to prevent brute force"
   kind        = "zone"
   phase       = "http_ratelimit"

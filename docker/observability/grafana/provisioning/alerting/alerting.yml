@@ -6,8 +6,8 @@ apiVersion: 1
 
 groups:
   - orgId: 1
-    name: ZeroGate Security Alerts
-    folder: ZeroGate Alerts
+    name: ZeroGate Access Security Alerts
+    folder: ZeroGate Access Alerts
     interval: 1m
     rules:
       - uid: auth-brute-force
@@ -120,7 +120,7 @@ groups:
         execErrState: Alerting
         for: 0s
         annotations:
-          summary: "A critical ZeroGate container was restarted"
+          summary: "A critical ZeroGate Access container was restarted"
           description: "Check container logs: docker compose logs --tail=100 <service>"
         labels:
           severity: high
@@ -255,7 +255,7 @@ contact_points:
         settings:
           # EDIT THIS: replace with your actual alert email address
           addresses: "security@yourdomain.com"
-          subject: "[ZeroGate] {{ .GroupLabels.severity | upper }}: {{ .CommonAnnotations.summary }}"
+          subject: "[ZeroGate Access] {{ .GroupLabels.severity | upper }}: {{ .CommonAnnotations.summary }}"
           message: |
             Alert: {{ .CommonAnnotations.summary }}
             Details: {{ .CommonAnnotations.description }}

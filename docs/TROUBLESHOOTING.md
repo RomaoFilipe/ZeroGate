@@ -1,4 +1,4 @@
-# ZeroGate — Troubleshooting
+# ZeroGate Access — Troubleshooting
 
 Quick-reference for the most common issues.
 

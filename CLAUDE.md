@@ -1,4 +1,4 @@
-# ZeroGate — CLAUDE.md
+# ZeroGate Access — CLAUDE.md
 
 Context for AI-assisted development on this project.
 

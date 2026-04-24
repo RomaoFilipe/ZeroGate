@@ -1,6 +1,6 @@
 #!/bin/bash
 # ============================================================
-# ZeroGate Security Audit
+# ZeroGate Access Security Audit
 # Run before production deployment and after major changes.
 # Prints a checklist with PASS/FAIL/WARN for each control.
 # Usage: ./scripts/security-audit.sh [--report <file>]
@@ -30,9 +30,9 @@ fail() { output "${RED}[FAIL]${NC} $*"; ((FAIL++)); }
 warn() { output "${YELLOW}[WARN]${NC} $*"; ((WARN++)); }
 section() { output "\n${BOLD}── $* ──${NC}"; }
 
-[[ -n "${REPORT_FILE}" ]] && { echo "ZeroGate Security Audit — $(date -u)" > "${REPORT_FILE}"; }
+[[ -n "${REPORT_FILE}" ]] && { echo "ZeroGate Access Security Audit — $(date -u)" > "${REPORT_FILE}"; }
 
-output "${BOLD}ZeroGate Security Audit — $(date -u)${NC}"
+output "${BOLD}ZeroGate Access Security Audit — $(date -u)${NC}"
 
 # ============================================================
 section "1. Network: Zero Open Ports"

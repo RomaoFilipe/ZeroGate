@@ -1,14 +1,14 @@
 # ============================================================
-# Authentik Blueprint — ZeroGate flows & policies
+# Authentik Blueprint — ZeroGate Access flows & policies
 # Apply via: Admin UI → System → Blueprints → Import
 # Or: docker exec zerogate-authentik-worker-1 ak apply_blueprint /blueprints/zerogate-flows.yaml
 # ============================================================
 
 version: 1
 metadata:
-  name: ZeroGate Core Flows
+  name: ZeroGate Access Core Flows
   labels:
-    blueprints.goauthentik.io/description: ZeroGate authentication flows with mandatory MFA (TOTP + WebAuthn/Passkey)
+    blueprints.goauthentik.io/description: ZeroGate Access authentication flows with mandatory MFA (TOTP + WebAuthn/Passkey)
 
 entries:
 
@@ -53,7 +53,7 @@ entries:
       name: zerogate-totp-setup
     attrs:
       name: zerogate-totp-setup
-      friendly_name: "ZeroGate Authenticator (TOTP)"
+      friendly_name: "ZeroGate Access Authenticator (TOTP)"
       digits: 6
 
   # ============================================================
@@ -68,7 +68,7 @@ entries:
       name: zerogate-webauthn-setup
     attrs:
       name: zerogate-webauthn-setup
-      friendly_name: "ZeroGate Passkey / Security Key"
+      friendly_name: "ZeroGate Access Passkey / Security Key"
       # cross-platform: hardware keys (YubiKey, etc.)
       # platform: built-in authenticators (Face ID, Touch ID, Windows Hello)
       # Leave empty to allow both (recommended)

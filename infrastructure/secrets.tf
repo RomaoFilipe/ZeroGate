@@ -42,7 +42,7 @@ resource "random_password" "grafana_secret_key" {
 # ---- Authentik secrets ------------------------------------
 resource "aws_secretsmanager_secret" "authentik" {
   name                    = "${local.name_prefix}/authentik"
-  description             = "ZeroGate Authentik IdP secrets"
+  description             = "ZeroGate Access Authentik IdP secrets"
   recovery_window_in_days = 7
 
   tags = { Name = "${local.name_prefix}-secret-authentik" }
@@ -61,7 +61,7 @@ resource "aws_secretsmanager_secret_version" "authentik" {
 # ---- Guacamole secrets ------------------------------------
 resource "aws_secretsmanager_secret" "guacamole" {
   name                    = "${local.name_prefix}/guacamole"
-  description             = "ZeroGate Guacamole secrets"
+  description             = "ZeroGate Access Guacamole secrets"
   recovery_window_in_days = 7
 
   tags = { Name = "${local.name_prefix}-secret-guacamole" }
@@ -78,7 +78,7 @@ resource "aws_secretsmanager_secret_version" "guacamole" {
 # ---- Grafana secrets --------------------------------------
 resource "aws_secretsmanager_secret" "grafana" {
   name                    = "${local.name_prefix}/grafana"
-  description             = "ZeroGate Grafana secrets"
+  description             = "ZeroGate Access Grafana secrets"
   recovery_window_in_days = 7
 
   tags = { Name = "${local.name_prefix}-secret-grafana" }
@@ -97,7 +97,7 @@ resource "aws_secretsmanager_secret_version" "grafana" {
 # Token is set manually after tunnel creation (can't auto-generate)
 resource "aws_secretsmanager_secret" "cloudflare" {
   name                    = "${local.name_prefix}/cloudflare"
-  description             = "ZeroGate Cloudflare Tunnel token"
+  description             = "ZeroGate Access Cloudflare Tunnel token"
   recovery_window_in_days = 7
 
   tags = { Name = "${local.name_prefix}-secret-cloudflare" }
@@ -122,7 +122,7 @@ resource "aws_secretsmanager_secret_version" "cloudflare" {
 resource "aws_secretsmanager_secret" "cloudflare_api" {
   count                   = var.cf_api_token != "" ? 1 : 0
   name                    = "${local.name_prefix}/cloudflare-api"
-  description             = "ZeroGate Cloudflare API token (WAF + Zero Trust management)"
+  description             = "ZeroGate Access Cloudflare API token (WAF + Zero Trust management)"
   recovery_window_in_days = 7
 
   tags = { Name = "${local.name_prefix}-secret-cloudflare-api" }

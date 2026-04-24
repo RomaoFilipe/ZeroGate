@@ -5,7 +5,7 @@
     { "type": "datasource", "id": "loki", "name": "Loki", "version": "1.0.0" }
   ],
   "annotations": { "list": [] },
-  "description": "ZeroGate — Access events, authentication, and session monitoring",
+  "description": "ZeroGate Access — Access events, authentication, and session monitoring",
   "editable": false,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
@@ -255,7 +255,7 @@
   "time": { "from": "now-24h", "to": "now" },
   "timepicker": {},
   "timezone": "browser",
-  "title": "ZeroGate — Access & Security",
+  "title": "ZeroGate Access — Access & Security",
   "uid": "zerogate-access",
   "version": 1
 }

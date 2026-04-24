@@ -1,6 +1,6 @@
-# ZeroGate — Cloudflare Access Policies
+# ZeroGate Access — Cloudflare Access Policies
 
-> Every application protected by ZeroGate must have an explicit policy.
+> Every application protected by ZeroGate Access must have an explicit policy.
 > Default: **deny all**. Access is granted only by positive rule.
 
 ---
@@ -208,7 +208,7 @@ Binding:        HTTP Redirect (AuthnRequest) + HTTP POST (ACS)
 
 ```
 1. Azure Portal → Azure AD → Enterprise Applications → New application → Create your own
-2. Name: ZeroGate
+2. Name: ZeroGate Access
 3. Set up single sign-on → SAML
 4. Basic SAML Configuration:
    Entity ID (Identifier):     https://auth.yourdomain.com/source/saml/enterprise-idp/
@@ -363,9 +363,9 @@ After enabling device posture in Terraform, integrate with Cloudflare Access:
 Zero Trust → Access → Applications → [your app] → Policies → Edit
   Add require rule:
     Selector: "Device Posture"
-    Value: "ZeroGate — WARP Client Connected"
-    Value: "ZeroGate — Disk Encryption (Windows)"
-    Value: "ZeroGate — Disk Encryption (macOS)"
+    Value: "ZeroGate Access — WARP Client Connected"
+    Value: "ZeroGate Access — Disk Encryption (Windows)"
+    Value: "ZeroGate Access — Disk Encryption (macOS)"
 ```
 
 ---

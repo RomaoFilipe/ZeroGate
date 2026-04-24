@@ -24,7 +24,7 @@ data "aws_ami" "ubuntu_24" {
 # ============================================================
 resource "aws_security_group" "main" {
   name        = "${local.name_prefix}-sg"
-  description = "ZeroGate: zero inbound rules — all access via Cloudflare Tunnel"
+  description = "ZeroGate Access: zero inbound rules — all access via Cloudflare Tunnel"
   vpc_id      = aws_vpc.main.id
 
   # Outbound: allow all (cloudflared needs to reach Cloudflare edge)
@@ -37,7 +37,7 @@ resource "aws_security_group" "main" {
   }
 
   # No ingress rules — zero open inbound ports
-  # This is the core security guarantee of ZeroGate.
+  # This is the core security guarantee of ZeroGate Access.
 
   tags = { Name = "${local.name_prefix}-sg-zero-inbound" }
 
@@ -90,7 +90,7 @@ resource "aws_instance" "main" {
 
 # Automated EBS snapshots via Data Lifecycle Manager
 resource "aws_dlm_lifecycle_policy" "ebs_backup" {
-  description        = "ZeroGate daily EBS snapshots"
+  description        = "ZeroGate Access daily EBS snapshots"
   execution_role_arn = aws_iam_role.dlm.arn
   state              = "ENABLED"
 

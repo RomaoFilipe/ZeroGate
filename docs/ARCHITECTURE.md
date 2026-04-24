@@ -1,4 +1,4 @@
-# ZeroGate — Architecture
+# ZeroGate Access — Architecture
 
 ## Design Decisions
 

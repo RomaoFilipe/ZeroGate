@@ -1,4 +1,4 @@
-# ZeroGate — User Onboarding
+# ZeroGate Access — User Onboarding
 
 This document covers:
 1. How to onboard a new user (admin steps)
@@ -94,7 +94,7 @@ Or use the Authentik expiry stage in a dedicated contractor flow.
 ```
 Hi [Name],
 
-Your access to [Company] internal resources via ZeroGate has been set up.
+Your access to [Company] internal resources via ZeroGate Access has been set up.
 
 ────────────────────────────────────────
 WHAT YOU GET ACCESS TO

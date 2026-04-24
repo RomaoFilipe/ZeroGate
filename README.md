@@ -1,6 +1,6 @@
 <div align="center">
 
-# ZeroGate
+# ZeroGate Access
 
 **Self-hosted Zero Trust Network Access — no VPN, no open ports, no compromise.**
 
@@ -21,15 +21,15 @@
 
 ---
 
-## What is ZeroGate?
+## What is ZeroGate Access?
 
-ZeroGate is a self-hosted Zero Trust Network Access (ZTNA) platform. It gives your team secure, browser-based access to internal resources — without opening a single port on your server, without installing VPN clients on user devices, and without trusting the network.
+ZeroGate Access is a self-hosted Zero Trust Network Access (ZTNA) platform. It gives your team secure, browser-based access to internal resources — without opening a single port on your server, without installing VPN clients on user devices, and without trusting the network.
 
 It combines **Cloudflare Tunnel + Authentik IdP + Apache Guacamole + full observability** in one Docker Compose stack on a single EC2 instance, provisioned entirely by Terraform.
 
 ### The problem it solves
 
-| Problem | Typical approach | ZeroGate |
+| Problem | Typical approach | ZeroGate Access |
 |---|---|---|
 | Secure remote access | VPN client on every device | Browser-based, no client needed |
 | Server exposed to internet | Open ports, firewall rules | Zero inbound ports — nothing to scan |
@@ -460,7 +460,7 @@ Authentik Setup Checklist:
 
 ```
 Zero Trust Dashboard → Access → Applications → Add → Self-Hosted
-  Name: ZeroGate Portal
+  Name: ZeroGate Access Portal
   Domain: portal.yourdomain.com
   Session duration: 8 hours
 
@@ -970,7 +970,7 @@ enable_geo_blocking = true
 make apply
 
 # Verify in Cloudflare dashboard:
-# Security → WAF → Custom Rules → "ZeroGate — Geo-Blocking"
+# Security → WAF → Custom Rules → "ZeroGate Access — Geo-Blocking"
 ```
 
 ### v1.1 — Device Posture

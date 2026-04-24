@@ -1,6 +1,6 @@
 #!/bin/bash
 # ============================================================
-# ZeroGate Secret Rotation
+# ZeroGate Access Secret Rotation
 # Rotates one or all secrets and restarts affected services.
 # Usage: ./scripts/rotate-secrets.sh [--component <name>] [--dry-run]
 # Components: tunnel | authentik | guacamole | grafana | all
@@ -182,7 +182,7 @@ rotate_grafana() {
   info "New Grafana admin password is in Secrets Manager: ${SECRET_PREFIX}/grafana"
 }
 
-log "ZeroGate Secret Rotation — component=${COMPONENT} dry-run=${DRY_RUN}"
+log "ZeroGate Access Secret Rotation — component=${COMPONENT} dry-run=${DRY_RUN}"
 [[ "${DRY_RUN}" == "true" ]] && warn "DRY-RUN mode — no changes will be made"
 
 case "${COMPONENT}" in

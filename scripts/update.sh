@@ -1,6 +1,6 @@
 #!/bin/bash
 # ============================================================
-# ZeroGate Service Updater
+# ZeroGate Access Service Updater
 # Updates one or all services to newer image versions with
 # backup, health verification, and automatic rollback.
 # Usage: ./scripts/update.sh [--service <name>] [--all] [--dry-run]
@@ -106,7 +106,7 @@ update_service() {
 }
 
 # ---- Main --------------------------------------------------
-log "ZeroGate Update — dry-run=${DRY_RUN} rollback=${ROLLBACK_ON_FAIL}"
+log "ZeroGate Access Update — dry-run=${DRY_RUN} rollback=${ROLLBACK_ON_FAIL}"
 
 # Backup databases before any update
 if [[ "${DRY_RUN}" == "false" ]]; then

@@ -1,6 +1,6 @@
 #!/bin/bash
 # ============================================================
-# ZeroGate Backup Script
+# ZeroGate Access Backup Script
 # Backs up: Authentik DB, Guacamole DB, all config files → S3
 # Schedule: cron daily at 02:00 UTC
 # Usage: ./scripts/backup.sh [--dry-run] [--component <name>]
@@ -141,7 +141,7 @@ log "Backup complete — all files in s3://${S3_BUCKET}/"
 if command -v aws &>/dev/null; then
   aws cloudwatch put-metric-data \
     --region "${AWS_REGION}" \
-    --namespace "ZeroGate/Backups" \
+    --namespace "ZeroGate Access/Backups" \
     --metric-name "BackupSuccess" \
     --value 1 \
     --unit Count 2>/dev/null || true

@@ -6,7 +6,7 @@
     { "type": "datasource", "id": "prometheus", "name": "Prometheus", "version": "1.0.0" }
   ],
   "annotations": { "list": [] },
-  "description": "ZeroGate — Security events: brute force, anomalies, policy violations",
+  "description": "ZeroGate Access — Security events: brute force, anomalies, policy violations",
   "editable": false,
   "graphTooltip": 1,
   "id": null,
@@ -323,7 +323,7 @@
   "time": { "from": "now-24h", "to": "now" },
   "timepicker": {},
   "timezone": "browser",
-  "title": "ZeroGate — Security Events",
+  "title": "ZeroGate Access — Security Events",
   "uid": "zerogate-security",
   "version": 1
 }

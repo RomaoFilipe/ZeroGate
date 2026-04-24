@@ -5,7 +5,7 @@
     { "type": "datasource", "id": "prometheus", "name": "Prometheus", "version": "1.0.0" }
   ],
   "annotations": { "list": [] },
-  "description": "ZeroGate — Host and container system health",
+  "description": "ZeroGate Access — Host and container system health",
   "editable": false,
   "graphTooltip": 1,
   "id": null,
@@ -289,7 +289,7 @@
   "time": { "from": "now-3h", "to": "now" },
   "timepicker": {},
   "timezone": "browser",
-  "title": "ZeroGate — System Health",
+  "title": "ZeroGate Access — System Health",
   "uid": "zerogate-system",
   "version": 1
 }

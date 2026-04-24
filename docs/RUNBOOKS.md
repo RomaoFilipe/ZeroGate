@@ -1,4 +1,4 @@
-# ZeroGate — Runbooks
+# ZeroGate Access — Runbooks
 
 Operational procedures for common and emergency scenarios.
 All commands assume you are in `/opt/zerogate/docker/` on the EC2 instance.

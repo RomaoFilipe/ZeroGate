@@ -1,4 +1,4 @@
-# ZeroGate — Security Policy
+# ZeroGate Access — Security Policy
 
 **Version:** 1.0  
 **Effective:** 2024-01-01  

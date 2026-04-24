@@ -1,4 +1,4 @@
-name: ZeroGate CI
+name: ZeroGate Access CI
 
 on:
   push:

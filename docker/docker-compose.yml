@@ -1,5 +1,5 @@
 # ============================================================
-# ZeroGate — Docker Compose Stack
+# ZeroGate Access — Docker Compose Stack
 # All services are on an isolated internal network.
 # Only cloudflared connects to the internet (outbound only).
 # No ports are published to the host (0.0.0.0) — ever.
@@ -452,7 +452,7 @@ services:
     entrypoint: ["sh", "-c"]
     command:
       - |
-        echo "ZeroGate threat-watcher started (interval: 5m)"
+        echo "ZeroGate Access threat-watcher started (interval: 5m)"
         while true; do
           /scripts/threat-response.sh || true
           sleep 300

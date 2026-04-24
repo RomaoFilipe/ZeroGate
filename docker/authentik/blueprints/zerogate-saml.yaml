@@ -5,7 +5,7 @@
 # Your enterprise IdP (Azure AD, Okta, Google Workspace) acts
 # as the Identity Provider (IdP) and issues SAML assertions.
 # Users authenticate with their corporate account — no separate
-# ZeroGate password required.
+# ZeroGate Access password required.
 #
 # Apply:
 #   docker exec zerogate-authentik-worker-1 \
@@ -23,7 +23,7 @@
 
 version: 1
 metadata:
-  name: ZeroGate SAML Federation
+  name: ZeroGate Access SAML Federation
   labels:
     blueprints.goauthentik.io/description: SAML 2.0 SP — federate with enterprise IdP (Azure AD, Okta)
 
@@ -161,9 +161,9 @@ entries:
     identifiers:
       slug: zerogate-saml-enrollment
     attrs:
-      name: "ZeroGate SAML Enrollment"
+      name: "ZeroGate Access SAML Enrollment"
       slug: zerogate-saml-enrollment
-      title: "Completing your ZeroGate account setup"
+      title: "Completing your ZeroGate Access account setup"
       designation: enrollment
       authentication: require_unauthenticated
       layout: stacked

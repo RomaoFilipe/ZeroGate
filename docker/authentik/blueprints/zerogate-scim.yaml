@@ -20,7 +20,7 @@
 
 version: 1
 metadata:
-  name: ZeroGate SCIM Provisioning
+  name: ZeroGate Access SCIM Provisioning
   labels:
     blueprints.goauthentik.io/description: SCIM v2.0 inbound user sync from HR systems
 
@@ -77,9 +77,9 @@ entries:
     identifiers:
       slug: zerogate-scim-enrollment
     attrs:
-      name: "ZeroGate SCIM Enrollment"
+      name: "ZeroGate Access SCIM Enrollment"
       slug: zerogate-scim-enrollment
-      title: "Welcome to ZeroGate — complete your account setup"
+      title: "Welcome to ZeroGate Access — complete your account setup"
       designation: enrollment
       authentication: require_unauthenticated
       layout: stacked

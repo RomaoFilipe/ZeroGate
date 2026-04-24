@@ -1,6 +1,6 @@
 #!/bin/bash
 # ============================================================
-# ZeroGate Bootstrap Script
+# ZeroGate Access Bootstrap Script
 # Run ONCE on a fresh EC2 instance after SSM connection.
 # Usage: sudo ./scripts/bootstrap.sh
 # ============================================================
@@ -223,7 +223,7 @@ fi
 log "Configuring Docker Compose systemd service..."
 cat > /etc/systemd/system/zerogate.service <<EOF
 [Unit]
-Description=ZeroGate Docker Compose Stack
+Description=ZeroGate Access Docker Compose Stack
 Requires=docker.service
 After=docker.service network-online.target
 Wants=network-online.target
